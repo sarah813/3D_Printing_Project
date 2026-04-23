@@ -1,5 +1,5 @@
-import pandas as pd
-from pyDOE import fracfact
+import pandas as pd # type: ignore
+from pyDOE import fracfact # type: ignore
 import tkinter as tk
 from tkinter import ttk
 
