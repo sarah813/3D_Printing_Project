@@ -155,10 +155,15 @@ def show_dataframe_popup(df, title):
         tree.insert("", "end", values=[idx] + list(row), tags=(tag,))
 
 
-root = tk.Tk()
-root.withdraw()  # hide main empty window
+def main():
+    root = tk.Tk()
+    root.withdraw()  # hide main empty window
 
-show_dataframe_popup(coded_df, "Coded Matrix (-1 / +1)")
-show_dataframe_popup(real_df, "Real Value Matrix")
+    show_dataframe_popup(coded_df, "Coded Matrix (-1 / +1)")
+    show_dataframe_popup(real_df, "Real Value Matrix")
 
-root.mainloop()
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()
