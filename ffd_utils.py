@@ -16,6 +16,15 @@ FULL_FACTOR_COLUMNS = [
     "F_walls",
 ]
 
+FACTOR_COLORS = {
+    "A_flow_ratio": "#1f77b4",
+    "B_nozzle_temp": "#ff7f0e",
+    "C_speed": "#2ca02c",
+    "D_line_width": "#d62728",
+    "E_layer_height": "#9467bd",
+    "F_walls": "#8c564b",
+}
+
 
 def create_fractional_factorial_design(include_walls=True):
     """Create the 16-run coded fractional factorial design."""
@@ -650,7 +659,11 @@ def plot_porosity_and_relative_density(results_df, experiment=None):
 
 def plot_main_effects_bar(main_effect_df, response="mass_mean_g", experiment=None):
     fig, ax = plt.subplots(figsize=(8, 3))
-    ax.bar(main_effect_df["Effect"], main_effect_df["Main effect"])
+    colors = [
+        FACTOR_COLORS.get(effect, "#7f7f7f")
+        for effect in main_effect_df["Effect"]
+    ]
+    ax.bar(main_effect_df["Effect"], main_effect_df["Main effect"], color=colors)
     ax.axhline(0, color="black", linewidth=1)
     ax.set_ylabel(f"Main effect on {response}")
     ax.set_title(experiment_title("Main effects", experiment))
@@ -674,7 +687,12 @@ def plot_main_effects_line(matrix, response="mass_mean_g", experiment=None):
         x1 = i * 3 + 1
         x2 = i * 3 + 2
 
-        ax.plot([x1, x2], [mean_low, mean_high], marker="o")
+        ax.plot(
+            [x1, x2],
+            [mean_low, mean_high],
+            marker="o",
+            color=FACTOR_COLORS.get(factor, "#7f7f7f"),
+        )
         xticks.extend([x1, x2])
         xtick_labels.extend(["-", "+"])
 
@@ -722,7 +740,12 @@ def plot_main_effects_line_comparison(
             x1 = i * 3 + 1
             x2 = i * 3 + 2
 
-            ax.plot([x1, x2], [mean_low, mean_high], marker="o")
+            ax.plot(
+                [x1, x2],
+                [mean_low, mean_high],
+                marker="o",
+                color=FACTOR_COLORS.get(factor, "#7f7f7f"),
+            )
             xticks.extend([x1, x2])
             xtick_labels.extend(["-", "+"])
             ax.text(

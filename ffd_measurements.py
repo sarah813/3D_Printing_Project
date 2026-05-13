@@ -123,7 +123,7 @@ FD_II_MASS_MEASUREMENTS_G = {
     ],
     "mass_4_g": [
         82.398, #82.053,  # RR1
-        None,#82.218,  # RR2
+        82.818,#82.218,  # RR2
         81.901,  # RR3
         81.960,  # RR4
         82.762,  # RR5
@@ -137,6 +137,6 @@ FD_II_MASS_MEASUREMENTS_G = {
         85.284,  # RR13
         86.492,  # RR14
         85.681,  # RR15
-        None,  # RR16
+        86.314,  # RR16
     ],
 }
