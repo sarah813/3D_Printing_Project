@@ -62,6 +62,56 @@ def map_coded_to_real(coded_df, levels):
     return real_df
 
 
+def create_box_behnken_design(factor_levels, center_repeats=3):
+    """Create a 3-factor Box-Behnken design with optional center repeats.
+
+    factor_levels must map each factor to {-1: low, 0: middle, 1: high}.
+    The design has edge-center points plus repeated all-middle center points.
+    """
+    factor_cols = list(factor_levels)
+    if len(factor_cols) != 3:
+        raise ValueError("Box-Behnken design here expects exactly 3 factors.")
+
+    rows = []
+    for fixed_factor in factor_cols:
+        active_factors = [factor for factor in factor_cols if factor != fixed_factor]
+        for low_high in itertools.product([-1, 1], repeat=2):
+            row = {factor: 0 for factor in factor_cols}
+            row[active_factors[0]] = low_high[0]
+            row[active_factors[1]] = low_high[1]
+            rows.append(row)
+
+    rows.extend({factor: 0 for factor in factor_cols} for _ in range(center_repeats))
+    coded_df = pd.DataFrame(rows, columns=factor_cols)
+    coded_df.index += 1
+    coded_df.index.name = "Run"
+
+    real_df = map_coded_to_real(coded_df, factor_levels)
+    return coded_df, real_df
+
+
+def create_two_level_factorial_design(factor_levels, center_repeats=1):
+    """Create a compact 2-level factorial design plus optional center repeats.
+
+    factor_levels must map each factor to {-1: low, 0: middle, 1: high}.
+    The factorial part uses only -1/+1 combinations; center repeats add the
+    default all-middle setting for a quick curvature/repeatability check.
+    """
+    factor_cols = list(factor_levels)
+    rows = [
+        dict(zip(factor_cols, values))
+        for values in itertools.product([-1, 1], repeat=len(factor_cols))
+    ]
+    rows.extend({factor: 0 for factor in factor_cols} for _ in range(center_repeats))
+
+    coded_df = pd.DataFrame(rows, columns=factor_cols)
+    coded_df.index += 1
+    coded_df.index.name = "Run"
+
+    real_df = map_coded_to_real(coded_df, factor_levels)
+    return coded_df, real_df
+
+
 def style_low_high(real_df, levels):
     """Style low values blue and high values red."""
     def color_low_high(val, col):
@@ -99,6 +149,11 @@ def volume_cm3(volume_mm3):
 
 def true_mass_g(volume_mm3, density_g_cm3):
     return volume_cm3(volume_mm3) * density_g_cm3
+
+
+def ideal_mass_g(volume_mm3, density_g_cm3):
+    """Mass expected from specimen volume and material density."""
+    return true_mass_g(volume_mm3, density_g_cm3)
 
 
 def calculated_masses_table(density_g_cm3, v_ri_mm3, v_rii_mm3):
@@ -141,6 +196,9 @@ def calculate_mean_mass_from_measurements(mass_values_g):
     """
     valid_masses = pd.Series(mass_values_g).dropna().to_numpy(dtype=float)
     measurement_count = len(valid_masses)
+
+    if measurement_count == 0:
+        return np.nan
 
     if measurement_count == 4:
         sorted_masses = np.sort(valid_masses)
@@ -188,13 +246,17 @@ def middle_two_masses_or_nan(mass_values_g):
     return pd.Series(middle_masses)
 
 
-def build_mass_measurements(measurements_g, run_prefix="RR"):
+def build_mass_measurements(measurements_g, run_prefix="RR", run_labels=None):
     """Build mass table and calculate the representative mean mass."""
     mass_columns = list(measurements_g.keys())
     row_count = max(len(values) for values in measurements_g.values())
+    if run_labels is None:
+        run_labels = [f"{run_prefix}{i}" for i in range(1, row_count + 1)]
+    elif len(run_labels) != row_count:
+        raise ValueError("run_labels must have the same length as measurements.")
 
     mass_measurements_g = pd.DataFrame({
-        "run": [f"{run_prefix}{i}" for i in range(1, row_count + 1)],
+        "run": run_labels,
         **measurements_g,
     })
 
@@ -310,27 +372,63 @@ def calculate_signed_porosity_percent(mass_g, true_mass_g_value):
     return (1 - (mass_g / true_mass_g_value)) * 100
 
 
-def calculate_mass_porosity_results(mass_measurements_g, true_mass_g_value, volume_cm3_value):
+def calculate_mass_deviation_from_ideal_percent(mass_g, ideal_mass_g_value):
+    """Positive means measured mass is below ideal; negative means above ideal."""
+    return (1 - (mass_g / ideal_mass_g_value)) * 100
+
+
+def calculate_mass_deficit_from_ideal_percent(mass_g, ideal_mass_g_value):
+    """Deprecated name; use calculate_mass_deviation_from_ideal_percent."""
+    return calculate_mass_deviation_from_ideal_percent(mass_g, ideal_mass_g_value)
+
+
+def calculate_measured_to_ideal_mass_percent(mass_g, ideal_mass_g_value):
+    return (mass_g / ideal_mass_g_value) * 100
+
+
+def calculate_ideal_mass_deviation_results(
+    mass_measurements_g,
+    ideal_mass_g_value,
+    volume_cm3_value,
+):
     results = mass_measurements_g[["run", "mass_mean_g", "mass_std_g"]].copy()
-    results["true_mass_g"] = true_mass_g_value
+    results["ideal_mass_g"] = ideal_mass_g_value
     results["bulk_density_g_cm3"] = results["mass_mean_g"].apply(
         lambda mass: calculate_bulk_density(mass, volume_cm3_value)
     )
-    results["relative_density_percent"] = results["mass_mean_g"].apply(
-        lambda mass: calculate_relative_density_percent(mass, true_mass_g_value)
+    results["measured_to_ideal_mass_percent"] = results["mass_mean_g"].apply(
+        lambda mass: calculate_measured_to_ideal_mass_percent(mass, ideal_mass_g_value)
     )
-    results["signed_porosity_percent"] = results["mass_mean_g"].apply(
-        lambda mass: calculate_signed_porosity_percent(mass, true_mass_g_value)
+    results["mass_deviation_from_ideal_percent"] = results["mass_mean_g"].apply(
+        lambda mass: calculate_mass_deviation_from_ideal_percent(mass, ideal_mass_g_value)
     )
+    # Backward-compatible column names used by earlier notebook cells.
+    results["true_mass_g"] = ideal_mass_g_value
+    results["relative_density_percent"] = results["measured_to_ideal_mass_percent"]
+    results["mass_deficit_from_ideal_percent"] = results["mass_deviation_from_ideal_percent"]
+    results["signed_porosity_percent"] = results["mass_deviation_from_ideal_percent"]
 
     return results.round({
         "mass_mean_g": 1,
         "mass_std_g": 3,
+        "ideal_mass_g": 3,
         "true_mass_g": 3,
         "bulk_density_g_cm3": 3,
+        "measured_to_ideal_mass_percent": 1,
+        "mass_deviation_from_ideal_percent": 1,
+        "mass_deficit_from_ideal_percent": 1,
         "relative_density_percent": 1,
         "signed_porosity_percent": 1,
     })
+
+
+def calculate_mass_porosity_results(mass_measurements_g, true_mass_g_value, volume_cm3_value):
+    """Deprecated name; use calculate_ideal_mass_deviation_results."""
+    return calculate_ideal_mass_deviation_results(
+        mass_measurements_g,
+        true_mass_g_value,
+        volume_cm3_value,
+    )
 
 
 def build_result_matrix(coded_df, results_df, response="mass_mean_g"):
@@ -414,12 +512,12 @@ def build_extra_run_candidates(
     candidate_rows = [
         {
             "Extra_run_name": "Density_max",
-            "Comment": "Confirm predicted density maximum (minimize signed porosity)",
+            "Comment": "Confirm predicted density maximum (minimize mass deviation)",
             **min_response_coded,
         },
         {
             "Extra_run_name": "Density_min",
-            "Comment": "Confirm predicted density minimum (maximize signed porosity)",
+            "Comment": "Confirm predicted density minimum (maximize mass deviation)",
             **max_response_coded,
         },
         {
@@ -441,7 +539,7 @@ def build_extra_run_candidates(
     for flow_ratio in extra_flow_ratios:
         row = {
             "Extra_run_name": f"Flow_{flow_ratio:g}",
-            "Comment": "Higher-flow exploratory run using low-porosity settings",
+            "Comment": "Higher-flow exploratory run using low mass deviation settings",
             **min_response_coded,
         }
         row["A_flow_ratio"] = flow_ratio
@@ -483,11 +581,11 @@ def experiment_title(title, experiment=None):
 def factor_code(factor):
     return factor.split("_", 1)[0]
 
-
 def plot_mass_measurements(
     mass_measurements_g,
     mass_columns,
     y_min=None,
+    y_max=None,
     mean_label="Mean",
     experiment=None,
     repeat_measurements_g=None,
@@ -496,7 +594,10 @@ def plot_mass_measurements(
     if "mass_std_g" in mass_measurements_g.columns:
         plot_columns.append("mass_std_g")
 
-    plot_df = mass_measurements_g.set_index("run")[plot_columns]
+    plot_df = mass_measurements_g.set_index("run")[plot_columns].apply(
+        pd.to_numeric,
+        errors="coerce",
+    )
     run_labels = plot_df.index.tolist()
     x = np.arange(len(plot_df))
     bar_width = 0.22
@@ -588,8 +689,8 @@ def plot_mass_measurements(
                 "alpha": 0.85,
             },
         )
-    if y_min is not None:
-        ax.set_ylim(bottom=y_min)
+    if y_min is not None or y_max is not None:
+        ax.set_ylim(bottom=y_min, top=y_max)
     ax.set_xticks(x)
     ax.set_xticklabels(run_labels, rotation=45)
     ax.legend()
@@ -599,35 +700,35 @@ def plot_mass_measurements(
     plt.show(block=False)
 
 
-def plot_porosity_and_relative_density(results_df, experiment=None):
+def plot_ideal_mass_deviation(results_df, experiment=None):
     plot_results = results_df.dropna(
-        subset=["relative_density_percent", "signed_porosity_percent"]
+        subset=["measured_to_ideal_mass_percent", "mass_deviation_from_ideal_percent"]
     )
     x = np.arange(len(plot_results))
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    porosity_colors = [
+    deviation_colors = [
         "#9ecae1" if value >= 0 else "#de2d26"
-        for value in plot_results["signed_porosity_percent"]
+        for value in plot_results["mass_deviation_from_ideal_percent"]
     ]
-    ax.bar(x, plot_results["signed_porosity_percent"], color=porosity_colors)
+    ax.bar(x, plot_results["mass_deviation_from_ideal_percent"], color=deviation_colors)
 
-    for xi, porosity in zip(x, plot_results["signed_porosity_percent"]):
+    for xi, deviation in zip(x, plot_results["mass_deviation_from_ideal_percent"]):
         ax.annotate(
-            f"{porosity:.1f}%",
-            xy=(xi, porosity),
-            xytext=(0, -6 if porosity >= 0 else 6),
+            f"{deviation:.1f}%",
+            xy=(xi, deviation),
+            xytext=(0, -6 if deviation >= 0 else 6),
             textcoords="offset points",
             ha="center",
-            va="top" if porosity >= 0 else "bottom",
+            va="top" if deviation >= 0 else "bottom",
             fontsize=9,
             color="#333333",
         )
 
     ax.axhline(0, color="#333333", linewidth=1)
     ax.set_xlabel("Test plate")
-    ax.set_ylabel("Signed porosity (%)")
-    ax.set_title(experiment_title("Signed porosity from average mass", experiment))
+    ax.set_ylabel("Mass deviation from ideal (%)")
+    ax.set_title(experiment_title("Mass deviation from ideal mass", experiment))
     ax.set_xticks(x)
     ax.set_xticklabels(plot_results["run"], rotation=45)
     ax.grid(axis="y", alpha=0.3)
@@ -638,16 +739,16 @@ def plot_porosity_and_relative_density(results_df, experiment=None):
     fig, ax = plt.subplots(figsize=(8, 4))
     ax.plot(
         x,
-        plot_results["relative_density_percent"],
+        plot_results["measured_to_ideal_mass_percent"],
         color="#08519c",
         marker="o",
         linewidth=2,
     )
-    ax.axhline(100, color="#333333", linestyle="-", linewidth=1.3, alpha=0.75, label="True mass (100%)")
+    ax.axhline(100, color="#333333", linestyle="-", linewidth=1.3, alpha=0.75, label="Ideal mass (100%)")
     ax.axhline(105, color="#de2d26", linestyle="--", linewidth=1.5, alpha=0.8, label="Flow rate 1.05 (105%)")
     ax.set_xlabel("Test plate")
-    ax.set_ylabel("Relative density (% of true mass)")
-    ax.set_title(experiment_title("Relative density from average mass", experiment))
+    ax.set_ylabel("Measured / ideal mass (%)")
+    ax.set_title(experiment_title("Measured mass relative to ideal mass", experiment))
     ax.set_xticks(x)
     ax.set_xticklabels(plot_results["run"], rotation=45)
     ax.legend()
@@ -655,6 +756,11 @@ def plot_porosity_and_relative_density(results_df, experiment=None):
 
     plt.tight_layout()
     plt.show(block=False)
+
+
+def plot_porosity_and_relative_density(results_df, experiment=None):
+    """Deprecated name; use plot_ideal_mass_deviation."""
+    plot_ideal_mass_deviation(results_df, experiment=experiment)
 
 
 def plot_main_effects_bar(main_effect_df, response="mass_mean_g", experiment=None):

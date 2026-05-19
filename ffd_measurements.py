@@ -140,3 +140,58 @@ FD_II_MASS_MEASUREMENTS_G = {
         86.314,  # RR16
     ],
 }
+
+
+EXTRA_RUN_LABELS = [
+    "LD",
+    "HD",
+    "E1",
+    "E2",
+    "E3",
+    "E4",
+    "E5",
+    "E6",
+]
+
+EXTRA_RUN_MASS_MEASUREMENTS_G = {
+    "mass_1_g": [
+        35.585,  # LD
+        None,  # HD
+        86.642,  # E1
+        None,  # E2
+        None,  # E3
+        None,  # E4
+        None,  # E5
+        None,  # E6
+    ],
+    "mass_2_g": [
+        35.710,  # LD
+        None,  # HD
+        87.034,  # E1
+        None,  # E2
+        None,  # E3
+        None,  # E4
+        None,  # E5
+        None,  # E6
+    ],
+    "mass_3_g": [
+        None,  # LD
+        None,  # HD
+        86.975,  # E1
+        None,  # E2
+        None,  # E3
+        None,  # E4
+        None,  # E5
+        None,  # E6
+    ],
+    "mass_4_g": [
+        None,  # LD
+        None,  # HD
+        None,  # E1
+        None,  # E2
+        None,  # E3
+        None,  # E4
+        None,  # E5
+        None,  # E6
+    ],
+}
