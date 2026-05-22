@@ -454,6 +454,161 @@ def compute_main_effects(matrix, response="mass_mean_g"):
     })
 
 
+def predict_response_from_main_effects(
+    coded_setting,
+    grand_mean,
+    main_effects,
+    factor_cols,
+):
+    """Predict a response from an additive main-effects model.
+
+    This is the standard screening-model estimate:
+    predicted response = grand mean + sum(coded level * effect / 2).
+    It does not include interactions or curvature, so use it for planning or
+    confirmation comparisons rather than as proof of the true optimum.
+    """
+    return grand_mean + sum(
+        coded_setting[factor] * main_effects[factor] / 2
+        for factor in factor_cols
+    )
+
+
+def real_settings_from_coded(coded_setting, levels, factor_cols=None):
+    """Convert a coded setting dictionary into real printer settings."""
+    if factor_cols is None:
+        factor_cols = list(levels)
+
+    return {
+        factor: levels[factor][coded_setting[factor]]
+        for factor in factor_cols
+    }
+
+
+def build_main_effect_prediction_comparison(
+    result_matrix,
+    main_effect_df,
+    levels,
+    response="mass_mean_g",
+    factor_cols=None,
+    run_prefix="RR",
+    experiment="Experiment",
+    confirmation_measurements=None,
+    confirmation_run="E1",
+):
+    """Compare main-effect predictions with measured confirmation values.
+
+    The table includes:
+    all +1 settings, the predicted best setting from main effects, the best
+    measured run inside the original matrix, and optionally one confirmation
+    run such as E1. This keeps the notebook focused on interpreting the table.
+    """
+    if factor_cols is None:
+        factor_cols = list(levels)
+
+    grand_mean = result_matrix[response].mean()
+    main_effects = main_effect_df.set_index("Effect")["Main effect"]
+
+    def predict(coded_setting):
+        return predict_response_from_main_effects(
+            coded_setting,
+            grand_mean,
+            main_effects,
+            factor_cols,
+        )
+
+    all_positive_coded = {factor: 1 for factor in factor_cols}
+    main_effect_max_coded = {
+        factor: (1 if main_effects[factor] >= 0 else -1)
+        for factor in factor_cols
+    }
+
+    all_positive_observed = result_matrix.loc[
+        (result_matrix[factor_cols] == pd.Series(all_positive_coded)).all(axis=1),
+        response,
+    ]
+    all_positive_observed_value = (
+        all_positive_observed.iloc[0] if not all_positive_observed.empty else pd.NA
+    )
+
+    observed_max_run = result_matrix[response].idxmax()
+    observed_max_coded = (
+        result_matrix.loc[observed_max_run, factor_cols]
+        .astype(int)
+        .to_dict()
+    )
+    observed_max_value = result_matrix.loc[observed_max_run, response]
+
+    rows = [
+        {
+            "case": f"{experiment} all +1 settings",
+            "coded_setting": all_positive_coded,
+            "real_setting": real_settings_from_coded(
+                all_positive_coded,
+                levels,
+                factor_cols,
+            ),
+            "predicted_mass_g": predict(all_positive_coded),
+            "observed_mass_g": all_positive_observed_value,
+            "note": "All factors high is not necessarily the response maximum.",
+        },
+        {
+            "case": f"{experiment} main-effect predicted max",
+            "coded_setting": main_effect_max_coded,
+            "real_setting": real_settings_from_coded(
+                main_effect_max_coded,
+                levels,
+                factor_cols,
+            ),
+            "predicted_mass_g": predict(main_effect_max_coded),
+            "observed_mass_g": pd.NA,
+            "note": "Uses only main effects; confirm because interactions, aliasing, and curvature are not included.",
+        },
+        {
+            "case": f"{experiment} observed max run {run_prefix}{observed_max_run}",
+            "coded_setting": observed_max_coded,
+            "real_setting": real_settings_from_coded(
+                observed_max_coded,
+                levels,
+                factor_cols,
+            ),
+            "predicted_mass_g": predict(observed_max_coded),
+            "observed_mass_g": observed_max_value,
+            "note": "Highest measured response inside the original matrix.",
+        },
+    ]
+
+    if confirmation_measurements is not None:
+        confirmation_observed = confirmation_measurements.loc[
+            confirmation_measurements["run"] == confirmation_run,
+            response,
+        ]
+        confirmation_value = (
+            confirmation_observed.iloc[0]
+            if not confirmation_observed.empty
+            else pd.NA
+        )
+        rows.append({
+            "case": f"{confirmation_run} confirmation run",
+            "coded_setting": pd.NA,
+            "real_setting": pd.NA,
+            "predicted_mass_g": pd.NA,
+            "observed_mass_g": confirmation_value,
+            "note": "Compare this measured value against the screening-model prediction.",
+        })
+
+    comparison = pd.DataFrame(rows)
+    comparison["predicted_mass_g"] = pd.to_numeric(
+        comparison["predicted_mass_g"],
+        errors="coerce",
+    ).round(2)
+    comparison["observed_mass_g"] = pd.to_numeric(
+        comparison["observed_mass_g"],
+        errors="coerce",
+    ).round(2)
+
+    return comparison
+
+
 def coded_setting_from_effects(effect_df, objective):
     """Choose coded factor settings that minimize or maximize a response.
 

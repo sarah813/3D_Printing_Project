@@ -195,3 +195,148 @@ EXTRA_RUN_MASS_MEASUREMENTS_G = {
         None,  # E6
     ],
 }
+
+
+BOX_BEHNKEN_RUN_LABELS = [
+    "O1",
+    "O2",
+    "O3",
+    "O4",
+    "O5",
+    "O6",
+    "O7",
+    "O8",
+    "O9",
+    "O10",
+    "O11",
+    "O12",
+    "O13",
+    "O14",
+    "O15",
+]
+
+BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
+    "mass_1_g": [
+        87.239,  # O1
+        86.898,  # O2
+        86.471,  # O3
+        87.345,  # O4
+        87.315,  # O5
+        87.334,  # O6
+        87.519,  # O7
+        None,  # O8
+        None,  # O9
+        None,  # O10
+        None,  # O11
+        None,  # O12
+        None,  # O13
+        None,  # O14
+        None,  # O15
+    ],
+    "mass_2_g": [
+        86.848,  # O1
+        86.790,  # O2
+        86.840,  # O3
+        87.186,  # O4
+        87.102,  # O5
+        87.592,  # O6
+        87.402,  # O7
+        None,  # O8
+        None,  # O9
+        None,  # O10
+        None,  # O11
+        None,  # O12
+        None,  # O13
+        None,  # O14
+        None,  # O15
+    ],
+    "mass_3_g": [
+        87.020,  # O1
+        86.914,  # O2
+        86.523,  # O3
+        87.099,  # O4
+        87.020,  # O5
+        None,  # O6
+        None,  # O7
+        None,  # O8
+        None,  # O9
+        None,  # O10
+        None,  # O11
+        None,  # O12
+        None,  # O13
+        None,  # O14
+        None,  # O15
+    ],
+    "mass_4_g": [
+        None,  # O1
+        None,  # O2
+        None,  # O3
+        None,  # O4
+        None,  # O5
+        None,  # O6
+        None,  # O7
+        None,  # O8
+        None,  # O9
+        None,  # O10
+        None,  # O11
+        None,  # O12
+        None,  # O13
+        None,  # O14
+        None,  # O15
+    ],
+}
+
+
+IRONING_RUN_LABELS = [
+    "I1",
+    "I2",
+    "I3",
+    "I4",
+    "I5",
+    "I6",
+    "I7",
+    "I8",
+]
+
+IRONING_MASS_MEASUREMENTS_G = {
+    "mass_1_g": [
+        None,  # I1
+        None,  # I2
+        None,  # I3
+        None,  # I4
+        None,  # I5
+        None,  # I6
+        None,  # I7
+        None,  # I8
+    ],
+    "mass_2_g": [
+        None,  # I1
+        None,  # I2
+        None,  # I3
+        None,  # I4
+        None,  # I5
+        None,  # I6
+        None,  # I7
+        None,  # I8
+    ],
+    "mass_3_g": [
+        None,  # I1
+        None,  # I2
+        None,  # I3
+        None,  # I4
+        None,  # I5
+        None,  # I6
+        None,  # I7
+        None,  # I8
+    ],
+    "mass_4_g": [
+        None,  # I1
+        None,  # I2
+        None,  # I3
+        None,  # I4
+        None,  # I5
+        None,  # I6
+        None,  # I7
+        None,  # I8
+    ],
+}
