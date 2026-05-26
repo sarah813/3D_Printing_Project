@@ -224,9 +224,9 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         87.315,  # O5
         87.334,  # O6
         87.519,  # O7
-        None,  # O8
-        None,  # O9
-        None,  # O10
+        87.117,  # O8
+        86.742,  # O9
+        86.994,  # O10
         None,  # O11
         None,  # O12
         None,  # O13
@@ -241,9 +241,9 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         87.102,  # O5
         87.592,  # O6
         87.402,  # O7
-        None,  # O8
-        None,  # O9
-        None,  # O10
+        87.405,  # O8
+        86.683,  # O9
+        86.862,  # O10
         None,  # O11
         None,  # O12
         None,  # O13
@@ -256,9 +256,9 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         86.523,  # O3
         87.099,  # O4
         87.020,  # O5
-        None,  # O6
-        None,  # O7
-        None,  # O8
+        87.806,  # O6
+        87.767,  # O7
+        87.310,  # O8
         None,  # O9
         None,  # O10
         None,  # O11
