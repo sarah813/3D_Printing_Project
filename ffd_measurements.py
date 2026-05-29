@@ -227,11 +227,11 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         87.117,  # O8
         86.742,  # O9
         86.994,  # O10
-        None,  # O11
-        None,  # O12
-        None,  # O13
-        None,  # O14
-        None,  # O15
+        86.435,  # O11
+        87.038,  # O12
+        86.702,  # O13
+        86.165,  # O14
+        86.786,  # O15
     ],
     "mass_2_g": [
         86.848,  # O1
@@ -244,11 +244,11 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         87.405,  # O8
         86.683,  # O9
         86.862,  # O10
-        None,  # O11
-        None,  # O12
-        None,  # O13
-        None,  # O14
-        None,  # O15
+        86.634,  # O11
+        86.936,  # O12
+        86.705,  # O13
+        86.237,  # O14
+        86.784,  # O15
     ],
     "mass_3_g": [
         87.020,  # O1
@@ -259,29 +259,29 @@ BOX_BEHNKEN_MASS_MEASUREMENTS_G = {
         87.806,  # O6
         87.767,  # O7
         87.310,  # O8
-        None,  # O9
-        None,  # O10
-        None,  # O11
-        None,  # O12
-        None,  # O13
-        None,  # O14
+        86.851,  # O9
+        87.150,  # O10
+        86.399,  # O11
+        86.493,  # O12
+        86.175,  # O13
+        86.475,  # O14
         None,  # O15
     ],
     "mass_4_g": [
-        None,  # O1
-        None,  # O2
-        None,  # O3
-        None,  # O4
-        None,  # O5
-        None,  # O6
-        None,  # O7
-        None,  # O8
-        None,  # O9
-        None,  # O10
-        None,  # O11
-        None,  # O12
-        None,  # O13
-        None,  # O14
+        86.525,  # O1
+        86.575,  # O2
+        87.019,  # O3
+        86.701,  # O4
+        86.949,  # O5
+        87.819,  # O6
+        87.366,  # O7
+        86.846,  # O8
+        86.394,  # O9
+        87.071,  # O10
+        85.785,  # O11
+        86.603,  # O12
+        86.602,  # O13
+        86.435,  # O14
         None,  # O15
     ],
 }
@@ -296,6 +296,9 @@ IRONING_RUN_LABELS = [
     "I6",
     "I7",
     "I8",
+    "I9",
+    "I10",
+    "I11",
 ]
 
 IRONING_MASS_MEASUREMENTS_G = {
@@ -308,6 +311,9 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I6
         None,  # I7
         None,  # I8
+        None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_2_g": [
         None,  # I1
@@ -318,6 +324,9 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I6
         None,  # I7
         None,  # I8
+        None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_3_g": [
         None,  # I1
@@ -328,6 +337,9 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I6
         None,  # I7
         None,  # I8
+        None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_4_g": [
         None,  # I1
@@ -338,5 +350,8 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I6
         None,  # I7
         None,  # I8
+        None,  # I9
+        None,  # I10
+        None,  # I11
     ],
 }

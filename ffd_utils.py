@@ -360,6 +360,143 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
     })
 
 
+def calculate_center_point_repeatability(
+    coded_df,
+    mass_measurements_g,
+    response="mass_mean_g",
+    center_level=0,
+):
+    """Estimate process repeatability from repeated center-point runs.
+
+    Box-Behnken designs usually include repeated center points. These have the
+    same coded factor settings, so variation between their mean masses is an
+    estimate of print-to-print repeatability at the center condition.
+    """
+    factor_cols = list(coded_df.columns)
+    repeat_df = coded_df.copy()
+    repeat_df["run"] = mass_measurements_g["run"].to_numpy()
+    repeat_df[response] = mass_measurements_g[response].to_numpy()
+    if "mass_std_g" in mass_measurements_g.columns:
+        repeat_df["mass_std_g"] = mass_measurements_g["mass_std_g"].to_numpy()
+
+    center_mask = repeat_df[factor_cols].eq(center_level).all(axis=1)
+    center_df = repeat_df.loc[center_mask].dropna(subset=[response]).copy()
+
+    if center_df.empty:
+        summary_df = pd.DataFrame([{
+            "center_repeats_with_data": 0,
+            "center_mean_g": np.nan,
+            "between_print_std_g": np.nan,
+            "center_range_g": np.nan,
+            "max_pair_difference_g": np.nan,
+            "max_pair_difference_percent": np.nan,
+            "mean_within_print_std_g": np.nan,
+        }])
+        return center_df, summary_df
+
+    center_values = center_df[response].to_numpy(dtype=float)
+    center_mean = center_values.mean()
+    center_range = center_values.max() - center_values.min()
+    between_std = np.nan if len(center_values) < 2 else center_values.std(ddof=1)
+    mean_within_std = (
+        center_df["mass_std_g"].mean()
+        if "mass_std_g" in center_df.columns
+        else np.nan
+    )
+
+    center_df["difference_from_center_mean_g"] = center_df[response] - center_mean
+    center_df["abs_difference_from_center_mean_g"] = (
+        center_df["difference_from_center_mean_g"].abs()
+    )
+
+    summary_df = pd.DataFrame([{
+        "center_repeats_with_data": len(center_df),
+        "center_mean_g": center_mean,
+        "between_print_std_g": between_std,
+        "center_range_g": center_range,
+        "max_pair_difference_g": center_range,
+        "max_pair_difference_percent": center_range / center_mean * 100,
+        "mean_within_print_std_g": mean_within_std,
+    }])
+
+    return (
+        center_df.round({
+            response: 3,
+            "mass_std_g": 3,
+            "difference_from_center_mean_g": 3,
+            "abs_difference_from_center_mean_g": 3,
+        }),
+        summary_df.round({
+            "center_mean_g": 3,
+            "between_print_std_g": 3,
+            "center_range_g": 3,
+            "max_pair_difference_g": 3,
+            "max_pair_difference_percent": 2,
+            "mean_within_print_std_g": 3,
+        }),
+    )
+
+
+def plot_center_point_repeatability(
+    center_repeatability_df,
+    summary_df,
+    response="mass_mean_g",
+    experiment=None,
+):
+    """Plot repeated center-point masses with mean and repeatability band."""
+    if center_repeatability_df.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(6, 3.8))
+    x = np.arange(len(center_repeatability_df))
+    center_mean = summary_df.loc[0, "center_mean_g"]
+    between_std = summary_df.loc[0, "between_print_std_g"]
+
+    ax.plot(
+        x,
+        center_repeatability_df[response],
+        marker="o",
+        color="#08519c",
+        linewidth=1.8,
+    )
+    ax.axhline(
+        center_mean,
+        color="#333333",
+        linestyle="--",
+        linewidth=1.2,
+        label=f"center mean = {center_mean:.3f} g",
+    )
+
+    if pd.notna(between_std):
+        ax.fill_between(
+            [-0.4, len(center_repeatability_df) - 0.6],
+            center_mean - between_std,
+            center_mean + between_std,
+            color="#9ecae1",
+            alpha=0.25,
+            label=f"+/-1 repeat std = {between_std:.3f} g",
+        )
+
+    for xi, (_, row) in zip(x, center_repeatability_df.iterrows()):
+        ax.annotate(
+            f"{row[response]:.3f}",
+            xy=(xi, row[response]),
+            xytext=(0, 7),
+            textcoords="offset points",
+            ha="center",
+            fontsize=8,
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(center_repeatability_df["run"])
+    ax.set_ylabel("Mass (g)")
+    ax.set_title(experiment_title("Center-point repeatability", experiment))
+    ax.grid(axis="y", alpha=0.25)
+    ax.legend()
+    plt.tight_layout()
+    plt.show(block=False)
+
+
 def calculate_bulk_density(mass_g, volume_cm3_value):
     return mass_g / volume_cm3_value
 
@@ -494,13 +631,16 @@ def build_main_effect_prediction_comparison(
     experiment="Experiment",
     confirmation_measurements=None,
     confirmation_run="E1",
+    confirmation_coded_setting=None,
+    include_screening_rows=True,
 ):
     """Compare main-effect predictions with measured confirmation values.
 
-    The table includes:
-    all +1 settings, the predicted best setting from main effects, the best
-    measured run inside the original matrix, and optionally one confirmation
-    run such as E1. This keeps the notebook focused on interpreting the table.
+    By default the table includes screening-model context rows plus optionally
+    one confirmation run such as E1. Set include_screening_rows=False when the
+    notebook should show only the confirmation run. Provide
+    confirmation_coded_setting when that confirmation run should also get a
+    model prediction.
     """
     if factor_cols is None:
         factor_cols = list(levels)
@@ -538,44 +678,47 @@ def build_main_effect_prediction_comparison(
     )
     observed_max_value = result_matrix.loc[observed_max_run, response]
 
-    rows = [
-        {
-            "case": f"{experiment} all +1 settings",
-            "coded_setting": all_positive_coded,
-            "real_setting": real_settings_from_coded(
-                all_positive_coded,
-                levels,
-                factor_cols,
-            ),
-            "predicted_mass_g": predict(all_positive_coded),
-            "observed_mass_g": all_positive_observed_value,
-            "note": "All factors high is not necessarily the response maximum.",
-        },
-        {
-            "case": f"{experiment} main-effect predicted max",
-            "coded_setting": main_effect_max_coded,
-            "real_setting": real_settings_from_coded(
-                main_effect_max_coded,
-                levels,
-                factor_cols,
-            ),
-            "predicted_mass_g": predict(main_effect_max_coded),
-            "observed_mass_g": pd.NA,
-            "note": "Uses only main effects; confirm because interactions, aliasing, and curvature are not included.",
-        },
-        {
-            "case": f"{experiment} observed max run {run_prefix}{observed_max_run}",
-            "coded_setting": observed_max_coded,
-            "real_setting": real_settings_from_coded(
-                observed_max_coded,
-                levels,
-                factor_cols,
-            ),
-            "predicted_mass_g": predict(observed_max_coded),
-            "observed_mass_g": observed_max_value,
-            "note": "Highest measured response inside the original matrix.",
-        },
-    ]
+    rows = []
+
+    if include_screening_rows:
+        rows.extend([
+            {
+                "case": f"{experiment} all +1 settings",
+                "coded_setting": all_positive_coded,
+                "real_setting": real_settings_from_coded(
+                    all_positive_coded,
+                    levels,
+                    factor_cols,
+                ),
+                "predicted_mass_g": predict(all_positive_coded),
+                "observed_mass_g": all_positive_observed_value,
+                "note": "All factors high is not necessarily the response maximum.",
+            },
+            {
+                "case": f"{experiment} main-effect predicted max",
+                "coded_setting": main_effect_max_coded,
+                "real_setting": real_settings_from_coded(
+                    main_effect_max_coded,
+                    levels,
+                    factor_cols,
+                ),
+                "predicted_mass_g": predict(main_effect_max_coded),
+                "observed_mass_g": pd.NA,
+                "note": "Uses only main effects; confirm because interactions, aliasing, and curvature are not included.",
+            },
+            {
+                "case": f"{experiment} observed max run {run_prefix}{observed_max_run}",
+                "coded_setting": observed_max_coded,
+                "real_setting": real_settings_from_coded(
+                    observed_max_coded,
+                    levels,
+                    factor_cols,
+                ),
+                "predicted_mass_g": predict(observed_max_coded),
+                "observed_mass_g": observed_max_value,
+                "note": "Highest measured response inside the original matrix.",
+            },
+        ])
 
     if confirmation_measurements is not None:
         confirmation_observed = confirmation_measurements.loc[
@@ -589,11 +732,30 @@ def build_main_effect_prediction_comparison(
         )
         rows.append({
             "case": f"{confirmation_run} confirmation run",
-            "coded_setting": pd.NA,
-            "real_setting": pd.NA,
-            "predicted_mass_g": pd.NA,
+            "coded_setting": (
+                confirmation_coded_setting
+                if confirmation_coded_setting is not None
+                else pd.NA
+            ),
+            "real_setting": (
+                real_settings_from_coded(
+                    confirmation_coded_setting,
+                    levels,
+                    factor_cols,
+                )
+                if confirmation_coded_setting is not None
+                else pd.NA
+            ),
+            "predicted_mass_g": (
+                predict(confirmation_coded_setting)
+                if confirmation_coded_setting is not None
+                else pd.NA
+            ),
             "observed_mass_g": confirmation_value,
-            "note": "Compare this measured value against the screening-model prediction.",
+            "note": (
+                "Predicted mass uses the FD_II main-effect maximum setting; "
+                "compare this measured value against that screening-model prediction."
+            ),
         })
 
     comparison = pd.DataFrame(rows)
@@ -627,6 +789,384 @@ def coded_setting_from_effects(effect_df, objective):
         signs = -signs
 
     return signs.astype(int).to_dict()
+
+
+def build_quadratic_model_matrix(coded_df, factor_cols):
+    """Build the quadratic response-surface model matrix for coded factors."""
+    model_terms = {"Intercept": np.ones(len(coded_df))}
+
+    for factor in factor_cols:
+        model_terms[factor] = coded_df[factor]
+
+    for factor in factor_cols:
+        model_terms[f"{factor}^2"] = coded_df[factor] ** 2
+
+    for factor1, factor2 in itertools.combinations(factor_cols, 2):
+        model_terms[f"{factor1}:{factor2}"] = coded_df[factor1] * coded_df[factor2]
+
+    return pd.DataFrame(model_terms, index=coded_df.index)
+
+
+def fit_quadratic_response_surface(matrix, response="mass_mean_g", factor_cols=None):
+    """Fit a quadratic response-surface model for a Box-Behnken design.
+
+    Rows without a response are ignored, so the model can be prepared while
+    measurements are still incomplete. With exactly as many measured rows as
+    coefficients, the fit is interpolating and residual diagnostics are limited.
+    """
+    if factor_cols is None:
+        factor_cols = [col for col in matrix.columns if col not in ["Run", response]]
+
+    analysis_df = matrix.dropna(subset=[response]).copy()
+    design_matrix = build_quadratic_model_matrix(analysis_df, factor_cols)
+    y = analysis_df[response].to_numpy(dtype=float)
+
+    coefficients, residuals, rank, singular_values = np.linalg.lstsq(
+        design_matrix.to_numpy(dtype=float),
+        y,
+        rcond=None,
+    )
+    coefficient_series = pd.Series(coefficients, index=design_matrix.columns)
+    predicted = design_matrix.to_numpy(dtype=float) @ coefficients
+    residual_values = y - predicted
+
+    total_ss = np.sum((y - y.mean()) ** 2)
+    residual_ss = np.sum(residual_values ** 2)
+    r_squared = np.nan if total_ss == 0 else 1 - residual_ss / total_ss
+
+    fitted_df = analysis_df[[*factor_cols, response]].copy()
+    if "run" in analysis_df.columns:
+        fitted_df.insert(0, "run", analysis_df["run"])
+    else:
+        fitted_df.insert(0, "run", analysis_df.index)
+    fitted_df["predicted_response"] = predicted
+    fitted_df["residual"] = residual_values
+
+    info_df = pd.DataFrame([{
+        "measured_runs": len(analysis_df),
+        "model_terms": len(coefficient_series),
+        "rank": rank,
+        "r_squared": r_squared,
+        "residual_std": (
+            np.nan
+            if len(analysis_df) <= rank
+            else np.sqrt(residual_ss / (len(analysis_df) - rank))
+        ),
+    }])
+
+    coefficient_df = coefficient_series.rename("coefficient").reset_index()
+    coefficient_df = coefficient_df.rename(columns={"index": "term"})
+
+    return {
+        "coefficients": coefficient_series,
+        "coefficient_df": coefficient_df,
+        "factor_cols": factor_cols,
+        "response": response,
+        "fitted_df": fitted_df,
+        "info_df": info_df,
+        "singular_values": singular_values,
+    }
+
+
+def predict_quadratic_response_surface(model, coded_df):
+    """Predict a response from a fitted quadratic response-surface model."""
+    design_matrix = build_quadratic_model_matrix(coded_df, model["factor_cols"])
+    return design_matrix @ model["coefficients"]
+
+
+def plot_quadratic_coefficients(model, experiment=None):
+    """Plot fitted quadratic model coefficients."""
+    coefficient_df = model["coefficient_df"].copy()
+    coefficient_df = coefficient_df[coefficient_df["term"] != "Intercept"]
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    colors = [
+        FACTOR_COLORS.get(term.split(":")[0].replace("^2", ""), "#7f7f7f")
+        for term in coefficient_df["term"]
+    ]
+    ax.bar(coefficient_df["term"], coefficient_df["coefficient"], color=colors)
+    ax.axhline(0, color="black", linewidth=1)
+    ax.set_ylabel(f"Coefficient on {model['response']}")
+    ax.set_title(experiment_title("Quadratic response-surface coefficients", experiment))
+    ax.tick_params(axis="x", rotation=45)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_quadratic_observed_vs_predicted(model, experiment=None):
+    """Plot observed versus fitted response values for the quadratic model."""
+    fitted_df = model["fitted_df"]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.scatter(
+        fitted_df[model["response"]],
+        fitted_df["predicted_response"],
+        color="#08519c",
+    )
+
+    min_value = min(fitted_df[model["response"]].min(), fitted_df["predicted_response"].min())
+    max_value = max(fitted_df[model["response"]].max(), fitted_df["predicted_response"].max())
+    ax.plot([min_value, max_value], [min_value, max_value], color="#333333", linestyle="--")
+
+    for _, row in fitted_df.iterrows():
+        run_label = row["run"]
+        if pd.notna(run_label):
+            if float(run_label).is_integer():
+                run_label = int(run_label)
+        ax.annotate(
+            run_label,
+            xy=(row[model["response"]], row["predicted_response"]),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+
+    ax.set_xlabel(f"Observed {model['response']}")
+    ax.set_ylabel(f"Predicted {model['response']}")
+    ax.set_title(experiment_title("Observed vs predicted", experiment))
+    ax.text(
+        1.04,
+        0.5,
+        "Model fit check:\n"
+        "Each point represents one\n"
+        "measured Box-Behnken run.\n\n"
+        "The dashed line indicates\n"
+        "perfect agreement between\n"
+        "measured and predicted mass.\n\n"
+        "Larger deviations from the\n"
+        "line indicate larger model\n"
+        "residuals for that run.",
+        transform=ax.transAxes,
+        ha="left",
+        va="center",
+        fontsize=9,
+        bbox={
+            "boxstyle": "round,pad=0.35",
+            "facecolor": "white",
+            "edgecolor": "#bbbbbb",
+            "alpha": 0.92,
+        },
+    )
+    ax.grid(alpha=0.25)
+    fig.subplots_adjust(right=0.68)
+    plt.show(block=False)
+
+
+def plot_quadratic_response_surface_slices(
+    model,
+    fixed_level=0,
+    grid_points=41,
+    experiment=None,
+):
+    """Plot pairwise response-surface contour slices with other factors fixed."""
+    factor_cols = model["factor_cols"]
+    factor_pairs = list(itertools.combinations(factor_cols, 2))
+    fig, axes = plt.subplots(
+        1,
+        len(factor_pairs),
+        figsize=(5 * len(factor_pairs), 4),
+        constrained_layout=True,
+    )
+    if len(factor_pairs) == 1:
+        axes = [axes]
+
+    grid = np.linspace(-1, 1, grid_points)
+
+    for ax, (factor_x, factor_y) in zip(axes, factor_pairs):
+        xx, yy = np.meshgrid(grid, grid)
+        rows = []
+        for x_value, y_value in zip(xx.ravel(), yy.ravel()):
+            row = {factor: fixed_level for factor in factor_cols}
+            row[factor_x] = x_value
+            row[factor_y] = y_value
+            rows.append(row)
+
+        prediction_df = pd.DataFrame(rows)
+        zz = predict_quadratic_response_surface(model, prediction_df).to_numpy()
+        zz = zz.reshape(xx.shape)
+
+        contour = ax.contourf(xx, yy, zz, levels=15, cmap="viridis")
+        ax.contour(xx, yy, zz, levels=8, colors="white", linewidths=0.5, alpha=0.7)
+        ax.set_xlabel(factor_x)
+        ax.set_ylabel(factor_y)
+        ax.set_title(f"{factor_x} vs {factor_y}")
+        ax.set_xlim(-1, 1)
+        ax.set_ylim(-1, 1)
+        ax.set_xticks([-1, 0, 1])
+        ax.set_yticks([-1, 0, 1])
+        fig.colorbar(contour, ax=ax, label=model["response"])
+
+    fig.suptitle(
+        experiment_title(
+            f"Response-surface slices (other factors fixed at {fixed_level})",
+            experiment,
+        ),
+    )
+    plt.show(block=False)
+
+
+def plot_quadratic_surface_and_contour_pairs(
+    model,
+    levels=None,
+    fixed_level=0,
+    grid_points=41,
+    experiment=None,
+):
+    """Plot paired 3D surface and 2D contour maps for each factor pair.
+
+    The model is fitted in coded -1/0/+1 units. If levels are supplied, axes
+    are labeled with the real printer settings while predictions still use the
+    coded grid internally.
+    """
+    factor_cols = model["factor_cols"]
+    factor_pairs = list(itertools.combinations(factor_cols, 2))
+    grid = np.linspace(-1, 1, grid_points)
+
+    def coded_grid_to_real(factor, coded_values):
+        coded_levels = np.array([-1, 0, 1], dtype=float)
+        real_levels = np.array(
+            [levels[factor][coded_level] for coded_level in [-1, 0, 1]],
+            dtype=float,
+        )
+        return np.interp(coded_values, coded_levels, real_levels)
+
+    for row_number, (factor_x, factor_y) in enumerate(factor_pairs, start=1):
+        xx_coded, yy_coded = np.meshgrid(grid, grid)
+        rows = []
+        for x_value, y_value in zip(xx_coded.ravel(), yy_coded.ravel()):
+            row = {factor: fixed_level for factor in factor_cols}
+            row[factor_x] = x_value
+            row[factor_y] = y_value
+            rows.append(row)
+
+        prediction_df = pd.DataFrame(rows)
+        zz = predict_quadratic_response_surface(model, prediction_df).to_numpy()
+        zz = zz.reshape(xx_coded.shape)
+
+        if levels is None:
+            xx_plot = xx_coded
+            yy_plot = yy_coded
+            x_ticks = [-1, 0, 1]
+            y_ticks = [-1, 0, 1]
+            x_tick_labels = ["-1", "0", "+1"]
+            y_tick_labels = ["-1", "0", "+1"]
+        else:
+            xx_plot = coded_grid_to_real(factor_x, xx_coded)
+            yy_plot = coded_grid_to_real(factor_y, yy_coded)
+            x_ticks = [levels[factor_x][level] for level in [-1, 0, 1]]
+            y_ticks = [levels[factor_y][level] for level in [-1, 0, 1]]
+            x_tick_labels = [f"{value:g}" for value in x_ticks]
+            y_tick_labels = [f"{value:g}" for value in y_ticks]
+
+        fig = plt.figure(figsize=(15, 5.4))
+        ax_surface = fig.add_subplot(1, 2, 1, projection="3d")
+        ax_contour = fig.add_subplot(1, 2, 2)
+
+        surface = ax_surface.plot_surface(
+            xx_plot,
+            yy_plot,
+            zz,
+            cmap="turbo",
+            edgecolor="black",
+            linewidth=0.18,
+            antialiased=True,
+            alpha=0.96,
+        )
+        z_floor = np.nanmin(zz)
+        ax_surface.contour(
+            xx_plot,
+            yy_plot,
+            zz,
+            zdir="z",
+            offset=z_floor,
+            levels=8,
+            cmap="turbo",
+            linewidths=1,
+        )
+        ax_surface.set_zlim(z_floor, np.nanmax(zz))
+        ax_surface.set_xlabel(factor_x)
+        ax_surface.set_ylabel(factor_y)
+        ax_surface.set_zlabel(model["response"])
+        ax_surface.xaxis.labelpad = 10
+        ax_surface.yaxis.labelpad = 10
+        ax_surface.zaxis.labelpad = 12
+        ax_surface.set_xticks(x_ticks)
+        ax_surface.set_yticks(y_ticks)
+        ax_surface.set_xticklabels(x_tick_labels)
+        ax_surface.set_yticklabels(y_tick_labels)
+        ax_surface.view_init(elev=26, azim=-135)
+
+        fitted_df = model["fitted_df"].copy()
+        plotted_points = fitted_df[
+            fitted_df[factor_cols]
+            .drop(columns=[factor_x, factor_y])
+            .eq(fixed_level)
+            .all(axis=1)
+        ]
+        if not plotted_points.empty:
+            if levels is None:
+                point_x = plotted_points[factor_x]
+                point_y = plotted_points[factor_y]
+            else:
+                point_x = plotted_points[factor_x].map(levels[factor_x])
+                point_y = plotted_points[factor_y].map(levels[factor_y])
+            ax_surface.scatter(
+                point_x,
+                point_y,
+                plotted_points[model["response"]],
+                color="#de2d26",
+                edgecolor="black",
+                s=45,
+                depthshade=False,
+            )
+
+        filled = ax_contour.contourf(
+            xx_plot,
+            yy_plot,
+            zz,
+            levels=30,
+            cmap="turbo",
+        )
+        contour_lines = ax_contour.contour(
+            xx_plot,
+            yy_plot,
+            zz,
+            levels=8,
+            colors="black",
+            linewidths=0.9,
+        )
+        ax_contour.clabel(contour_lines, inline=True, fontsize=8, fmt="%.1f")
+        if not plotted_points.empty:
+            ax_contour.scatter(
+                point_x,
+                point_y,
+                color="#de2d26",
+                edgecolor="black",
+                s=35,
+                zorder=3,
+            )
+        ax_contour.set_xlabel(factor_x)
+        ax_contour.set_ylabel(factor_y)
+        ax_contour.set_xticks(x_ticks)
+        ax_contour.set_yticks(y_ticks)
+        ax_contour.set_xticklabels(x_tick_labels)
+        ax_contour.set_yticklabels(y_tick_labels)
+        fig.colorbar(filled, ax=ax_contour, label=model["response"])
+
+        fig.suptitle(
+            experiment_title(
+                f"Surface and contour {row_number}: {factor_x} vs {factor_y}",
+                experiment,
+            ),
+        )
+        fig.subplots_adjust(
+            left=0.08,
+            right=0.93,
+            bottom=0.13,
+            top=0.88,
+            wspace=0.28,
+        )
+        plt.show(block=False)
 
 
 def real_value_from_coded(factor, coded_value, levels):
@@ -1031,6 +1571,59 @@ def plot_main_effects_line_comparison(
     axes[0].set_ylabel("Average Response")
     fig.suptitle(experiment_title(f"Conditional trends ({response})", experiment))
     fig.subplots_adjust(bottom=0.22, top=0.84, wspace=0.18)
+    plt.show(block=False)
+
+
+def plot_three_level_main_effects(
+    matrix,
+    response="mass_mean_g",
+    factor_cols=None,
+    levels=None,
+    experiment=None,
+):
+    """Plot mean response at -1, 0, and +1 for each three-level factor."""
+    if factor_cols is None:
+        factor_cols = [col for col in matrix.columns if col not in ["Run", response]]
+
+    plot_matrix = matrix.dropna(subset=[response])
+    fig, axes = plt.subplots(
+        1,
+        len(factor_cols),
+        figsize=(4.3 * len(factor_cols), 3.6),
+        sharey=True,
+    )
+    if len(factor_cols) == 1:
+        axes = [axes]
+
+    for ax, factor in zip(axes, factor_cols):
+        coded_levels = [-1, 0, 1]
+        means = [
+            plot_matrix.loc[plot_matrix[factor] == coded_level, response].mean()
+            for coded_level in coded_levels
+        ]
+        if levels is None:
+            x_values = coded_levels
+            x_labels = ["-1", "0", "+1"]
+        else:
+            x_values = [levels[factor][coded_level] for coded_level in coded_levels]
+            x_labels = [f"{value:g}" for value in x_values]
+
+        ax.plot(
+            x_values,
+            means,
+            marker="o",
+            color=FACTOR_COLORS.get(factor, "#008b8b"),
+            linewidth=1.8,
+        )
+        ax.set_title(factor)
+        ax.set_xlabel(factor)
+        ax.set_xticks(x_values)
+        ax.set_xticklabels(x_labels)
+        ax.grid(axis="y", alpha=0.25)
+
+    axes[0].set_ylabel(response)
+    fig.suptitle(experiment_title(f"Three-level main effects ({response})", experiment))
+    fig.subplots_adjust(bottom=0.22, top=0.82, wspace=0.18)
     plt.show(block=False)
 
 
