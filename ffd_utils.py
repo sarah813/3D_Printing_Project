@@ -497,6 +497,30 @@ def plot_center_point_repeatability(
     plt.show(block=False)
 
 
+def plot_repeatability_summary_comparison(summary_df, experiment=None):
+    """Compare repeatability summary metrics across measurement sets."""
+    metric_cols = [
+        "between_print_std_g",
+        "center_range_g",
+        "mean_within_print_std_g",
+    ]
+    available_metrics = [
+        metric for metric in metric_cols
+        if metric in summary_df.columns and summary_df[metric].notna().any()
+    ]
+    if not available_metrics:
+        return
+
+    plot_df = summary_df.set_index("measurement_set")[available_metrics]
+    ax = plot_df.plot(kind="bar", figsize=(7, 4), color=["#08519c", "#f28e2b", "#6baed6"])
+    ax.set_ylabel("Mass variation (g)")
+    ax.set_title(experiment_title("Center-point repeatability comparison", experiment))
+    ax.tick_params(axis="x", rotation=0)
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
 def calculate_bulk_density(mass_g, volume_cm3_value):
     return mass_g / volume_cm3_value
 
@@ -829,10 +853,20 @@ def fit_quadratic_response_surface(matrix, response="mass_mean_g", factor_cols=N
     coefficient_series = pd.Series(coefficients, index=design_matrix.columns)
     predicted = design_matrix.to_numpy(dtype=float) @ coefficients
     residual_values = y - predicted
+    residual_df = len(analysis_df) - rank
 
     total_ss = np.sum((y - y.mean()) ** 2)
     residual_ss = np.sum(residual_values ** 2)
+    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
     r_squared = np.nan if total_ss == 0 else 1 - residual_ss / total_ss
+
+    try:
+        xtx_inv = np.linalg.pinv(
+            design_matrix.to_numpy(dtype=float).T @ design_matrix.to_numpy(dtype=float)
+        )
+        standard_errors = np.sqrt(np.diag(xtx_inv) * residual_ms)
+    except Exception:
+        standard_errors = np.full(len(coefficient_series), np.nan)
 
     fitted_df = analysis_df[[*factor_cols, response]].copy()
     if "run" in analysis_df.columns:
@@ -846,32 +880,119 @@ def fit_quadratic_response_surface(matrix, response="mass_mean_g", factor_cols=N
         "measured_runs": len(analysis_df),
         "model_terms": len(coefficient_series),
         "rank": rank,
+        "residual_df": residual_df,
         "r_squared": r_squared,
-        "residual_std": (
-            np.nan
-            if len(analysis_df) <= rank
-            else np.sqrt(residual_ss / (len(analysis_df) - rank))
-        ),
+        "residual_std": np.sqrt(residual_ms) if residual_df > 0 else np.nan,
     }])
 
     coefficient_df = coefficient_series.rename("coefficient").reset_index()
     coefficient_df = coefficient_df.rename(columns={"index": "term"})
+    term_statistics_df = coefficient_df.copy()
+    term_statistics_df["standard_error"] = standard_errors
+    term_statistics_df["t_value"] = (
+        term_statistics_df["coefficient"] / term_statistics_df["standard_error"]
+    )
+    term_statistics_df["absolute_t_value"] = term_statistics_df["t_value"].abs()
+    term_statistics_df["F_value"] = term_statistics_df["t_value"] ** 2
+    try:
+        from scipy import stats
+
+        term_statistics_df["p_value"] = 2 * stats.t.sf(
+            term_statistics_df["absolute_t_value"],
+            df=residual_df,
+        )
+    except Exception:
+        term_statistics_df["p_value"] = np.nan
 
     return {
         "coefficients": coefficient_series,
         "coefficient_df": coefficient_df,
+        "term_statistics_df": term_statistics_df,
         "factor_cols": factor_cols,
         "response": response,
         "fitted_df": fitted_df,
         "info_df": info_df,
+        "design_matrix": design_matrix,
         "singular_values": singular_values,
     }
+
+
+def build_quadratic_anova_table(model):
+    """Build an overall ANOVA table for a fitted quadratic response model."""
+    response = model["response"]
+    fitted_df = model["fitted_df"]
+    observed = fitted_df[response].to_numpy(dtype=float)
+    residual = fitted_df["residual"].to_numpy(dtype=float)
+
+    total_ss = float(np.sum((observed - observed.mean()) ** 2))
+    residual_ss = float(np.sum(residual**2))
+    model_ss = total_ss - residual_ss
+
+    rank = int(model["info_df"]["rank"].iloc[0])
+    model_df = rank - 1
+    residual_df = int(model["info_df"]["residual_df"].iloc[0])
+    total_df = len(fitted_df) - 1
+
+    model_ms = model_ss / model_df if model_df > 0 else np.nan
+    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
+    f_value = model_ms / residual_ms if residual_ms and not np.isnan(residual_ms) else np.nan
+    try:
+        from scipy import stats
+
+        p_value = stats.f.sf(f_value, model_df, residual_df)
+    except Exception:
+        p_value = np.nan
+
+    return pd.DataFrame({
+        "source": ["Model", "Residual", "Total"],
+        "df": [model_df, residual_df, total_df],
+        "sum_sq": [model_ss, residual_ss, total_ss],
+        "mean_sq": [model_ms, residual_ms, np.nan],
+        "F_value": [f_value, np.nan, np.nan],
+        "p_value": [p_value, np.nan, np.nan],
+    })
 
 
 def predict_quadratic_response_surface(model, coded_df):
     """Predict a response from a fitted quadratic response-surface model."""
     design_matrix = build_quadratic_model_matrix(coded_df, model["factor_cols"])
     return design_matrix @ model["coefficients"]
+
+
+def plot_quadratic_pareto(model, experiment=None, alpha=0.05):
+    """Plot a Pareto chart of standardized quadratic-model effects."""
+    term_df = model["term_statistics_df"].copy()
+    term_df = term_df[term_df["term"] != "Intercept"]
+    term_df = term_df.sort_values("absolute_t_value", ascending=True)
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+    colors = [
+        FACTOR_COLORS.get(term.split(":")[0].replace("^2", ""), "#7f7f7f")
+        for term in term_df["term"]
+    ]
+    ax.barh(term_df["term"], term_df["absolute_t_value"], color=colors)
+    ax.set_xlabel("Absolute standardized effect (|t|)")
+    ax.set_title(experiment_title("Pareto chart of quadratic model effects", experiment))
+    ax.grid(axis="x", alpha=0.25)
+
+    residual_df = int(model["info_df"]["residual_df"].iloc[0])
+    if residual_df > 0:
+        try:
+            from scipy import stats
+
+            critical_value = stats.t.ppf(1 - alpha / 2, df=residual_df)
+            ax.axvline(
+                critical_value,
+                color="#d95f02",
+                linewidth=1.5,
+                label=f"alpha={alpha:g} threshold",
+            )
+            ax.legend(loc="lower right")
+        except Exception:
+            pass
+
+    plt.tight_layout()
+    plt.show(block=False)
 
 
 def plot_quadratic_coefficients(model, experiment=None):
@@ -1284,6 +1405,10 @@ def plot_mass_measurements(
     mean_label="Mean",
     experiment=None,
     repeat_measurements_g=None,
+    reference_mass_g=None,
+    reference_label="Reference",
+    reference_color="#f28e2b",
+    reference_details=None,
 ):
     plot_columns = mass_columns + ["mass_mean_g"]
     if "mass_std_g" in mass_measurements_g.columns:
@@ -1296,8 +1421,9 @@ def plot_mass_measurements(
     run_labels = plot_df.index.tolist()
     x = np.arange(len(plot_df))
     bar_width = 0.22
+    summary_lines = []
 
-    fig, ax = plt.subplots(figsize=(12, 4))
+    fig, ax = plt.subplots(figsize=(16, 4.3))
     offsets = np.linspace(
         -bar_width * (len(mass_columns) - 1) / 2,
         bar_width * (len(mass_columns) - 1) / 2,
@@ -1307,6 +1433,57 @@ def plot_mass_measurements(
 
     for offset, column, color in zip(offsets, mass_columns, colors):
         ax.bar(x + offset, plot_df[column], width=bar_width, label=column, color=color)
+
+    tick_positions = x.tolist()
+    tick_labels = run_labels.copy()
+    if reference_mass_g is not None and pd.notna(reference_mass_g):
+        reference_x = -1
+        ax.axhline(
+            reference_mass_g,
+            color=reference_color,
+            linestyle="-",
+            linewidth=1.5,
+            alpha=0.35,
+            zorder=0,
+            label=f"{reference_label} level",
+        )
+        ax.bar(
+            reference_x,
+            reference_mass_g,
+            width=bar_width * 1.4,
+            color=reference_color,
+            label=reference_label,
+            alpha=0.9,
+        )
+        ax.annotate(
+            f"{reference_mass_g:.1f}",
+            xy=(reference_x, reference_mass_g),
+            xytext=(0, 6),
+            textcoords="offset points",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            color="#7a3b00",
+        )
+        tick_positions = [reference_x, *tick_positions]
+        tick_labels = [reference_label, *tick_labels]
+
+    if reference_details:
+        ax.text(
+            1.02,
+            0.5,
+            reference_details,
+            transform=ax.transAxes,
+            ha="left",
+            va="center",
+            fontsize=9,
+            bbox={
+                "boxstyle": "round,pad=0.35",
+                "facecolor": "white",
+                "edgecolor": reference_color,
+                "alpha": 0.9,
+            },
+        )
 
     if repeat_measurements_g is not None and not repeat_measurements_g.empty:
         repeat_df = repeat_measurements_g.copy()
@@ -1341,6 +1518,17 @@ def plot_mass_measurements(
                     va="bottom",
                     fontsize=8,
                     color="#1b7837",
+                )
+
+            repeatability_df = calculate_repeatability(
+                mass_measurements_g,
+                repeat_measurements_g,
+            )
+            if not repeatability_df.empty:
+                summary_lines.append(
+                    "Repeatability: "
+                    f"mean abs diff {repeatability_df['abs_difference_g'].mean():.3f} g; "
+                    f"max {repeatability_df['abs_difference_g'].max():.3f} g"
                 )
 
     ax.plot(
@@ -1384,14 +1572,33 @@ def plot_mass_measurements(
                 "alpha": 0.85,
             },
         )
+    if summary_lines:
+        ax.text(
+            0.99,
+            0.82,
+            "\n".join(summary_lines),
+            transform=ax.transAxes,
+            ha="right",
+            va="top",
+            fontsize=9,
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "facecolor": "white",
+                "edgecolor": "#31a354",
+                "alpha": 0.85,
+            },
+        )
     if y_min is not None or y_max is not None:
         ax.set_ylim(bottom=y_min, top=y_max)
-    ax.set_xticks(x)
-    ax.set_xticklabels(run_labels, rotation=45)
-    ax.legend()
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0)
     ax.grid(axis="y", alpha=0.3)
 
-    plt.tight_layout()
+    if reference_details:
+        fig.subplots_adjust(right=0.70)
+    else:
+        fig.subplots_adjust(right=0.82, bottom=0.20)
     plt.show(block=False)
 
 
@@ -1718,13 +1925,43 @@ def plot_interaction_effects(interaction_effects, experiment=None):
         )
         label_col = "Plot label"
 
+    interaction_effects_df["Color factor"] = (
+        interaction_effects_df["Interaction"].str.split(" x ").str[0]
+    )
+    colors = [
+        FACTOR_COLORS.get(factor, "#7f7f7f")
+        for factor in interaction_effects_df["Color factor"]
+    ]
+
     plt.figure(figsize=(12, 4))
-    plt.bar(interaction_effects_df[label_col], interaction_effects_df["Effect"])
+    plt.bar(
+        interaction_effects_df[label_col],
+        interaction_effects_df["Effect"],
+        color=colors,
+    )
     plt.axhline(0, color="black", linewidth=1)
 
     plt.ylabel("Interaction effect on mass_mean_g")
     plt.title(experiment_title("Interaction effects plot", experiment))
     plt.xticks(rotation=45, ha="right")
 
-    plt.tight_layout()
+    legend_factors = list(dict.fromkeys(interaction_effects_df["Color factor"]))
+    legend_handles = [
+        plt.Rectangle(
+            (0, 0),
+            1,
+            1,
+            color=FACTOR_COLORS.get(factor, "#7f7f7f"),
+            label=factor,
+        )
+        for factor in legend_factors
+    ]
+    plt.legend(
+        handles=legend_handles,
+        title="First factor",
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+    )
+
+    plt.tight_layout(rect=[0, 0, 0.84, 1])
     plt.show(block=False)
