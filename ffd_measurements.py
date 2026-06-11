@@ -182,6 +182,8 @@ IRONING_RUN_LABELS = [
     "I7",
     "I8",
     "I9",
+    "I10",
+    "I11",
 ]
 
 IRONING_MASS_MEASUREMENTS_G = {
@@ -195,6 +197,8 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I7
         None,  # I8
         None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_2_g": [
         None,  # I1
@@ -206,6 +210,8 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I7
         None,  # I8
         None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_3_g": [
         None,  # I1
@@ -217,6 +223,8 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I7
         None,  # I8
         None,  # I9
+        None,  # I10
+        None,  # I11
     ],
     "mass_4_g": [
         None,  # I1
@@ -228,5 +236,7 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I7
         None,  # I8
         None,  # I9
+        None,  # I10
+        None,  # I11
     ],
 }
