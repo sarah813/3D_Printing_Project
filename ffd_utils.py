@@ -1575,11 +1575,11 @@ def plot_mass_measurements(
     if summary_lines:
         ax.text(
             0.99,
-            0.82,
+            0.04,
             "\n".join(summary_lines),
             transform=ax.transAxes,
             ha="right",
-            va="top",
+            va="bottom",
             fontsize=9,
             bbox={
                 "boxstyle": "round,pad=0.25",

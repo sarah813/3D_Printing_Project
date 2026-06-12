@@ -188,8 +188,8 @@ IRONING_RUN_LABELS = [
 
 IRONING_MASS_MEASUREMENTS_G = {
     "mass_1_g": [
-        None,  # I1
-        None,  # I2
+        9.452,  # I1
+        9.623,  # I2
         None,  # I3
         None,  # I4
         None,  # I5
