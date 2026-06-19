@@ -246,7 +246,12 @@ def middle_two_masses_or_nan(mass_values_g):
     return pd.Series(middle_masses)
 
 
-def build_mass_measurements(measurements_g, run_prefix="RR", run_labels=None):
+def build_mass_measurements(
+    measurements_g,
+    run_prefix="RR",
+    run_labels=None,
+    mean_round_digits=1,
+):
     """Build mass table and calculate the representative mean mass."""
     mass_columns = list(measurements_g.keys())
     row_count = max(len(values) for values in measurements_g.values())
@@ -268,7 +273,7 @@ def build_mass_measurements(measurements_g, run_prefix="RR", run_labels=None):
     mass_measurements_g["mass_mean_g"] = mass_measurements_g[mass_columns].apply(
         calculate_mean_mass_from_measurements,
         axis=1,
-    ).round(1)
+    ).round(mean_round_digits)
     mass_measurements_g["mass_std_g"] = mass_measurements_g[mass_columns].apply(
         calculate_mass_std_from_measurements,
         axis=1,
@@ -277,7 +282,7 @@ def build_mass_measurements(measurements_g, run_prefix="RR", run_labels=None):
     return mass_measurements_g, mass_columns
 
 
-def build_repeat_mass_measurements(repeat_measurements_g):
+def build_repeat_mass_measurements(repeat_measurements_g, mean_round_digits=1):
     """Build repeat-run mass table and calculate the repeat mean mass."""
     mass_columns = list(repeat_measurements_g.keys())
     run_names = list(next(iter(repeat_measurements_g.values())).keys())
@@ -292,7 +297,7 @@ def build_repeat_mass_measurements(repeat_measurements_g):
     repeat_measurements_g["mass_mean_g"] = repeat_measurements_g[mass_columns].apply(
         calculate_mean_mass_from_measurements,
         axis=1,
-    ).round(1)
+    ).round(mean_round_digits)
     repeat_measurements_g["mass_std_g"] = repeat_measurements_g[mass_columns].apply(
         calculate_mass_std_from_measurements,
         axis=1,
@@ -317,6 +322,7 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
             calculate_mean_mass_from_measurements,
             axis=1,
         )
+    repeat_df = repeat_df.dropna(subset=["mass_mean_g"])
 
     original_df = original_measurements_g[["run", "mass_mean_g"]].rename(
         columns={"mass_mean_g": "original_mass_mean_g"}
@@ -435,6 +441,90 @@ def calculate_center_point_repeatability(
             "mean_within_print_std_g": 3,
         }),
     )
+
+
+def calculate_center_curvature(
+    coded_df,
+    mass_measurements_g,
+    response="mass_mean_g",
+    center_level=0,
+):
+    """Estimate overall curvature from factorial and center-point means.
+
+    A two-level design cannot separate the quadratic effect of each factor.
+    This calculation therefore reports only one combined curvature estimate.
+    """
+    factor_cols = list(coded_df.columns)
+    analysis_df = coded_df.copy()
+    analysis_df[response] = mass_measurements_g[response].to_numpy()
+
+    center_mask = analysis_df[factor_cols].eq(center_level).all(axis=1)
+    factorial_mask = analysis_df[factor_cols].abs().eq(1).all(axis=1)
+    center_values = analysis_df.loc[center_mask, response].dropna()
+    factorial_values = analysis_df.loc[factorial_mask, response].dropna()
+
+    center_mean = center_values.mean() if len(center_values) else np.nan
+    factorial_mean = factorial_values.mean() if len(factorial_values) else np.nan
+    curvature = (
+        center_mean - factorial_mean
+        if pd.notna(center_mean) and pd.notna(factorial_mean)
+        else np.nan
+    )
+
+    return pd.DataFrame([{
+        "factorial_runs_with_data": len(factorial_values),
+        "center_runs_with_data": len(center_values),
+        "factorial_mean_g": factorial_mean,
+        "center_mean_g": center_mean,
+        "overall_curvature_g": curvature,
+        "center_std_g": (
+            center_values.std(ddof=1) if len(center_values) > 1 else np.nan
+        ),
+    }])
+
+
+def plot_center_curvature(curvature_summary, experiment=None):
+    """Plot factorial and center means for an overall curvature check."""
+    row = curvature_summary.iloc[0]
+    if pd.isna(row["factorial_mean_g"]) or pd.isna(row["center_mean_g"]):
+        return
+
+    values = [row["factorial_mean_g"], row["center_mean_g"]]
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(
+        ["Factorial mean", "Center mean"],
+        values,
+        color=["#4c78a8", "#f28e2b"],
+        width=0.55,
+    )
+    for index, value in enumerate(values):
+        ax.annotate(
+            f"{value:.3f} g",
+            (index, value),
+            xytext=(0, 6),
+            textcoords="offset points",
+            ha="center",
+        )
+    ax.set_ylabel("Mass (g)")
+    ax.set_title(experiment_title("Overall center-point curvature", experiment))
+    ax.text(
+        0.98,
+        0.05,
+        f"Center - factorial mean = {row['overall_curvature_g']:+.3f} g",
+        transform=ax.transAxes,
+        ha="right",
+        va="bottom",
+        fontsize=9,
+        bbox={
+            "boxstyle": "round,pad=0.25",
+            "facecolor": "white",
+            "edgecolor": "#bbbbbb",
+            "alpha": 0.9,
+        },
+    )
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
 
 
 def plot_center_point_repeatability(
@@ -613,6 +703,161 @@ def compute_main_effects(matrix, response="mass_mean_g"):
             for factor in factor_cols
         ],
     })
+
+
+def build_factor_level_coverage(matrix, response="mass_mean_g", factor_cols=None):
+    """Count available responses at each coded level for every factor."""
+    if factor_cols is None:
+        factor_cols = [col for col in matrix.columns if col not in ["Run", response]]
+
+    rows = []
+    for factor in factor_cols:
+        for level in [-1, 0, 1]:
+            rows.append({
+                "factor": factor,
+                "coded_level": level,
+                "available_runs": int(
+                    matrix.loc[matrix[factor] == level, response].notna().sum()
+                ),
+            })
+    return pd.DataFrame(rows)
+
+
+def fit_main_effect_screening_model(matrix, response="mass_mean_g", factor_cols=None):
+    """Fit an intercept and coded main effects using all available responses.
+
+    This supports incomplete screening designs. The model is estimable only
+    when its design matrix has full column rank. Interactions and curvature are
+    intentionally excluded.
+    """
+    if factor_cols is None:
+        factor_cols = [col for col in matrix.columns if col not in ["Run", response]]
+
+    analysis_df = matrix.dropna(subset=[response]).copy()
+    design_matrix = pd.DataFrame(
+        {"Intercept": np.ones(len(analysis_df))},
+        index=analysis_df.index,
+    )
+    for factor in factor_cols:
+        design_matrix[factor] = analysis_df[factor].astype(float)
+
+    y = analysis_df[response].to_numpy(dtype=float)
+    x = design_matrix.to_numpy(dtype=float)
+    coefficients, _, rank, singular_values = np.linalg.lstsq(x, y, rcond=None)
+    predicted = x @ coefficients
+    residual = y - predicted
+    residual_df = len(analysis_df) - rank
+    residual_ss = float(np.sum(residual**2))
+    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
+    total_ss = float(np.sum((y - y.mean()) ** 2))
+    r_squared = np.nan if total_ss == 0 else 1 - residual_ss / total_ss
+
+    coefficient_series = pd.Series(coefficients, index=design_matrix.columns)
+    statistics_df = coefficient_series.rename("coefficient").reset_index()
+    statistics_df = statistics_df.rename(columns={"index": "term"})
+    statistics_df["effect"] = statistics_df["coefficient"]
+    statistics_df.loc[
+        statistics_df["term"] != "Intercept",
+        "effect",
+    ] *= 2
+
+    if residual_df > 0 and rank == design_matrix.shape[1]:
+        xtx_inv = np.linalg.pinv(x.T @ x)
+        standard_errors = np.sqrt(np.diag(xtx_inv) * residual_ms)
+        statistics_df["standard_error"] = standard_errors
+        statistics_df["t_value"] = (
+            statistics_df["coefficient"] / statistics_df["standard_error"]
+        )
+        try:
+            from scipy import stats
+
+            statistics_df["p_value"] = 2 * stats.t.sf(
+                statistics_df["t_value"].abs(),
+                df=residual_df,
+            )
+        except Exception:
+            statistics_df["p_value"] = np.nan
+    else:
+        statistics_df["standard_error"] = np.nan
+        statistics_df["t_value"] = np.nan
+        statistics_df["p_value"] = np.nan
+
+    fitted_df = analysis_df.copy()
+    fitted_df["predicted_response"] = predicted
+    fitted_df["residual"] = residual
+
+    info_df = pd.DataFrame([{
+        "available_runs": len(analysis_df),
+        "required_model_terms": design_matrix.shape[1],
+        "rank": rank,
+        "full_rank": rank == design_matrix.shape[1],
+        "residual_df": residual_df,
+        "r_squared": r_squared,
+        "residual_std": np.sqrt(residual_ms) if residual_df > 0 else np.nan,
+    }])
+
+    return {
+        "factor_cols": factor_cols,
+        "response": response,
+        "coefficients": coefficient_series,
+        "statistics_df": statistics_df,
+        "fitted_df": fitted_df,
+        "info_df": info_df,
+        "singular_values": singular_values,
+    }
+
+
+def plot_screening_model_effects(model, experiment=None):
+    """Plot coded main effects from a partial-data screening model."""
+    effect_df = model["statistics_df"].copy()
+    effect_df = effect_df[effect_df["term"] != "Intercept"]
+    effect_df = effect_df.sort_values("effect", key=abs, ascending=True)
+    colors = [FACTOR_COLORS.get(term, "#4c78a8") for term in effect_df["term"]]
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    ax.barh(effect_df["term"], effect_df["effect"], color=colors)
+    ax.axvline(0, color="black", linewidth=1)
+    ax.set_xlabel(f"Estimated main effect on {model['response']}")
+    ax.set_title(experiment_title("Partial-data main-effect model", experiment))
+    ax.grid(axis="x", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_screening_observed_vs_predicted(model, experiment=None):
+    """Plot observed versus predicted responses for a screening model."""
+    fitted_df = model["fitted_df"]
+    response = model["response"]
+
+    fig, ax = plt.subplots(figsize=(6.5, 5))
+    ax.scatter(
+        fitted_df[response],
+        fitted_df["predicted_response"],
+        color="#08519c",
+    )
+    minimum = min(fitted_df[response].min(), fitted_df["predicted_response"].min())
+    maximum = max(fitted_df[response].max(), fitted_df["predicted_response"].max())
+    ax.plot([minimum, maximum], [minimum, maximum], color="#333333", linestyle="--")
+
+    for run, observed, predicted in zip(
+        fitted_df.index,
+        fitted_df[response],
+        fitted_df["predicted_response"],
+    ):
+        ax.annotate(
+            str(run),
+            (observed, predicted),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+
+    ax.set_xlabel(f"Observed {response}")
+    ax.set_ylabel(f"Predicted {response}")
+    ax.set_title(experiment_title("Observed vs predicted", experiment))
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
 
 
 def predict_response_from_main_effects(
@@ -1409,6 +1654,8 @@ def plot_mass_measurements(
     reference_label="Reference",
     reference_color="#f28e2b",
     reference_details=None,
+    value_digits=1,
+    repeat_bar_offset=None,
 ):
     plot_columns = mass_columns + ["mass_mean_g"]
     if "mass_std_g" in mass_measurements_g.columns:
@@ -1456,7 +1703,7 @@ def plot_mass_measurements(
             alpha=0.9,
         )
         ax.annotate(
-            f"{reference_mass_g:.1f}",
+            f"{reference_mass_g:.{value_digits}f}",
             xy=(reference_x, reference_mass_g),
             xytext=(0, 6),
             textcoords="offset points",
@@ -1494,7 +1741,9 @@ def plot_mass_measurements(
 
         if not repeat_df.empty:
             repeat_x = repeat_df["x"].to_numpy(dtype=float)
-            repeat_x += (len(mass_columns) + 1) * bar_width / 2
+            if repeat_bar_offset is None:
+                repeat_bar_offset = (len(mass_columns) + 1) * bar_width / 2
+            repeat_x += repeat_bar_offset
             ax.bar(
                 repeat_x,
                 repeat_df["mass_mean_g"],
@@ -1510,7 +1759,7 @@ def plot_mass_measurements(
                 repeat_df["mass_mean_g"],
             ):
                 ax.annotate(
-                    f"{run}\n{mass:.1f}",
+                    f"{run}\n{mass:.{value_digits}f}",
                     xy=(xi, mass),
                     xytext=(0, 6),
                     textcoords="offset points",
@@ -1543,7 +1792,7 @@ def plot_mass_measurements(
     for xi, mass in zip(x, plot_df["mass_mean_g"]):
         if pd.notna(mass):
             ax.annotate(
-                f"{mass:.1f}",
+                f"{mass:.{value_digits}f}",
                 xy=(xi, mass),
                 xytext=(0, 6),
                 textcoords="offset points",

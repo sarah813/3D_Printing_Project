@@ -190,13 +190,13 @@ IRONING_MASS_MEASUREMENTS_G = {
     "mass_1_g": [
         9.452,  # I1
         9.623,  # I2
-        None,  # I3
-        None,  # I4
-        None,  # I5
-        None,  # I6
-        None,  # I7
-        None,  # I8
-        None,  # I9
+        9.477,  # I3
+        9.537,  # I4
+        9.551,  # I5
+        9.678,  # I6
+        9.558,  # I7
+        9.718,  # I8
+        9.500,  # I9
         None,  # I10
         None,  # I11
     ],
@@ -213,30 +213,33 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I10
         None,  # I11
     ],
-    "mass_3_g": [
-        None,  # I1
-        None,  # I2
-        None,  # I3
-        None,  # I4
-        None,  # I5
-        None,  # I6
-        None,  # I7
-        None,  # I8
-        None,  # I9
-        None,  # I10
-        None,  # I11
-    ],
-    "mass_4_g": [
-        None,  # I1
-        None,  # I2
-        None,  # I3
-        None,  # I4
-        None,  # I5
-        None,  # I6
-        None,  # I7
-        None,  # I8
-        None,  # I9
-        None,  # I10
-        None,  # I11
-    ],
+}
+
+IRONING_REPEAT_MASS_MEASUREMENTS_G = {
+    "mass_1_g": {
+        "I1.2": None,
+        "I2.2": None,
+        "I3.2": None,
+        "I4.2": None,
+        "I5.2": None,
+        "I6.2": None,
+        "I7.2": None,
+        "I8.2": 9.712,
+        "I9.2": None,
+        "I10.2": None,
+        "I11.2": None,
+    },
+    "mass_2_g": {
+        "I1.2": None,
+        "I2.2": None,
+        "I3.2": None,
+        "I4.2": None,
+        "I5.2": None,
+        "I6.2": None,
+        "I7.2": None,
+        "I8.2": None,
+        "I9.2": None,
+        "I10.2": None,
+        "I11.2": None,
+    },
 }
