@@ -19,8 +19,11 @@ FULL_FACTOR_COLUMNS = [
 FACTOR_COLORS = {
     "A_flow_ratio": "#1f77b4",
     "B_nozzle_temp": "#ff7f0e",
+    "B_nozzle_temp_C": "#ff7f0e",
     "C_speed": "#2ca02c",
+    "C_ironing_flow_percent": "#2ca02c",
     "D_line_width": "#d62728",
+    "D_ironing_speed_mm_s": "#d62728",
     "E_layer_height": "#9467bd",
     "F_walls": "#8c564b",
 }
@@ -507,6 +510,7 @@ def plot_center_curvature(curvature_summary, experiment=None):
         )
     ax.set_ylabel("Mass (g)")
     ax.set_title(experiment_title("Overall center-point curvature", experiment))
+    ax.set_ylim(0, max(values) * 1.08)
     ax.text(
         0.98,
         0.05,
@@ -688,6 +692,202 @@ def build_result_matrix(coded_df, results_df, response="mass_mean_g"):
     return pd.concat([coded_df.copy(), response_df], axis=1)
 
 
+def build_ironing_quality_table(
+    blob_counts,
+    run_labels=None,
+    stringing_runs=None,
+    stringing_penalty=5,
+):
+    """Build a visual-defect score table for ironing runs.
+
+    The quality score is intentionally simple and transparent:
+    blob count plus a configurable penalty for visible stringing.
+    Lower scores are better.
+    """
+    stringing_runs = set(stringing_runs or [])
+    if isinstance(blob_counts, dict):
+        labels = list(run_labels) if run_labels is not None else list(blob_counts)
+        counts = [blob_counts.get(label) for label in labels]
+    else:
+        labels = list(run_labels) if run_labels is not None else [
+            f"I{i}" for i in range(1, len(blob_counts) + 1)
+        ]
+        counts = list(blob_counts)
+
+    rows = []
+    for label, count in zip(labels, counts):
+        has_stringing = label in stringing_runs
+        rows.append({
+            "run": label,
+            "blob_count": count,
+            "has_stringing": has_stringing,
+            "stringing_penalty": stringing_penalty if has_stringing else 0,
+            "quality_score": (
+                np.nan
+                if pd.isna(count)
+                else count + (stringing_penalty if has_stringing else 0)
+            ),
+        })
+    return pd.DataFrame(rows)
+
+
+def build_mass_quality_tradeoff(
+    mass_measurements_g,
+    quality_table,
+    target_mass_g=None,
+    mass_weight=0.5,
+    quality_weight=0.5,
+):
+    """Combine ironing mass and visual-quality results into a tradeoff table.
+
+    If target_mass_g is supplied, the mass part rewards closeness to target.
+    Otherwise it rewards higher measured mass. The combined score is scaled
+    from the measured data only; lower combined scores are better.
+    """
+    tradeoff_df = mass_measurements_g[["run", "mass_mean_g"]].merge(
+        quality_table[["run", "blob_count", "has_stringing", "quality_score"]],
+        on="run",
+        how="outer",
+    )
+
+    if target_mass_g is None:
+        tradeoff_df["mass_metric"] = -tradeoff_df["mass_mean_g"]
+        tradeoff_df["mass_metric_label"] = "higher mass is better"
+    else:
+        tradeoff_df["mass_error_abs_g"] = (
+            tradeoff_df["mass_mean_g"] - target_mass_g
+        ).abs()
+        tradeoff_df["mass_metric"] = tradeoff_df["mass_error_abs_g"]
+        tradeoff_df["mass_metric_label"] = "closer to target mass is better"
+
+    def normalize_lower_is_better(series):
+        valid = series.dropna()
+        if valid.empty:
+            return pd.Series(np.nan, index=series.index)
+        spread = valid.max() - valid.min()
+        if spread == 0:
+            return pd.Series(0.0, index=series.index)
+        return (series - valid.min()) / spread
+
+    tradeoff_df["mass_score_0_best"] = normalize_lower_is_better(
+        tradeoff_df["mass_metric"]
+    )
+    tradeoff_df["quality_score_0_best"] = normalize_lower_is_better(
+        tradeoff_df["quality_score"]
+    )
+    tradeoff_df["combined_score_0_best"] = (
+        mass_weight * tradeoff_df["mass_score_0_best"]
+        + quality_weight * tradeoff_df["quality_score_0_best"]
+    )
+    tradeoff_df["combined_rank"] = tradeoff_df["combined_score_0_best"].rank(
+        method="min",
+    )
+    return tradeoff_df.sort_values("combined_score_0_best")
+
+
+def build_desirability_table(
+    response_df,
+    mass_col="mass_mean_g",
+    quality_col="quality_score",
+    mass_low=None,
+    mass_high=None,
+    quality_best=None,
+    quality_worst=None,
+    mass_weight=1.0,
+    quality_weight=1.0,
+):
+    """Calculate mass, quality, and combined response desirabilities.
+
+    Mass uses a higher-is-better desirability and visual quality uses a
+    lower-is-better desirability. The overall desirability is their weighted
+    geometric mean. All desirabilities range from 0 to 1.
+    """
+    result_df = response_df.copy()
+    valid_mass = result_df[mass_col].dropna()
+    valid_quality = result_df[quality_col].dropna()
+    if valid_mass.empty or valid_quality.empty:
+        raise ValueError("Mass and quality responses are required.")
+
+    mass_low = valid_mass.min() if mass_low is None else mass_low
+    mass_high = valid_mass.max() if mass_high is None else mass_high
+    quality_best = valid_quality.min() if quality_best is None else quality_best
+    quality_worst = valid_quality.max() if quality_worst is None else quality_worst
+
+    if mass_high <= mass_low:
+        raise ValueError("mass_high must be greater than mass_low.")
+    if quality_worst <= quality_best:
+        raise ValueError("quality_worst must be greater than quality_best.")
+    if mass_weight <= 0 or quality_weight <= 0:
+        raise ValueError("Desirability weights must be positive.")
+
+    result_df["mass_desirability"] = (
+        (result_df[mass_col] - mass_low) / (mass_high - mass_low)
+    ).clip(0, 1)
+    result_df["quality_desirability"] = (
+        (quality_worst - result_df[quality_col])
+        / (quality_worst - quality_best)
+    ).clip(0, 1)
+
+    total_weight = mass_weight + quality_weight
+    result_df["overall_desirability"] = (
+        result_df["mass_desirability"].pow(mass_weight)
+        * result_df["quality_desirability"].pow(quality_weight)
+    ).pow(1 / total_weight)
+    result_df["desirability_rank"] = result_df["overall_desirability"].rank(
+        method="min",
+        ascending=False,
+    )
+    result_df.attrs["desirability_limits"] = {
+        "mass_low": mass_low,
+        "mass_high": mass_high,
+        "quality_best": quality_best,
+        "quality_worst": quality_worst,
+        "mass_weight": mass_weight,
+        "quality_weight": quality_weight,
+    }
+    return result_df.sort_values("overall_desirability", ascending=False)
+
+
+def calculate_score_repeatability(
+    original_table,
+    repeat_table,
+    score_col,
+    run_col="run",
+):
+    """Compare repeated non-mass scores such as visual quality scores."""
+    if repeat_table.empty:
+        return pd.DataFrame()
+
+    comparison_df = repeat_table[[run_col, score_col]].dropna(
+        subset=[score_col]
+    ).copy()
+    if comparison_df.empty:
+        return pd.DataFrame()
+
+    comparison_df["original_run"] = comparison_df[run_col].str.replace(
+        r"\.\d+$",
+        "",
+        regex=True,
+    )
+    comparison_df = comparison_df.merge(
+        original_table[[run_col, score_col]].rename(
+            columns={
+                run_col: "original_run",
+                score_col: f"original_{score_col}",
+            }
+        ),
+        on="original_run",
+        how="left",
+    )
+    comparison_df = comparison_df.rename(columns={score_col: f"repeat_{score_col}"})
+    comparison_df["difference"] = (
+        comparison_df[f"repeat_{score_col}"]
+        - comparison_df[f"original_{score_col}"]
+    )
+    comparison_df["abs_difference"] = comparison_df["difference"].abs()
+    return comparison_df
+
+
 def compute_main_effect(matrix, effect, response="mass_mean_g"):
     mean_high = matrix.loc[matrix[effect] == 1, response].mean()
     mean_low = matrix.loc[matrix[effect] == -1, response].mean()
@@ -808,7 +1008,7 @@ def fit_main_effect_screening_model(matrix, response="mass_mean_g", factor_cols=
 
 
 def plot_screening_model_effects(model, experiment=None):
-    """Plot coded main effects from a partial-data screening model."""
+    """Plot signed coded main effects from a screening model."""
     effect_df = model["statistics_df"].copy()
     effect_df = effect_df[effect_df["term"] != "Intercept"]
     effect_df = effect_df.sort_values("effect", key=abs, ascending=True)
@@ -817,8 +1017,11 @@ def plot_screening_model_effects(model, experiment=None):
     fig, ax = plt.subplots(figsize=(9, 4.5))
     ax.barh(effect_df["term"], effect_df["effect"], color=colors)
     ax.axvline(0, color="black", linewidth=1)
-    ax.set_xlabel(f"Estimated main effect on {model['response']}")
-    ax.set_title(experiment_title("Partial-data main-effect model", experiment))
+    ax.set_xlabel(
+        f"Estimated main effect on {model['response']} "
+        "(+ means higher response at high factor level)"
+    )
+    ax.set_title(experiment_title("Main-effect screening model", experiment))
     ax.grid(axis="x", alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
@@ -860,6 +1063,104 @@ def plot_screening_observed_vs_predicted(model, experiment=None):
     plt.show(block=False)
 
 
+def plot_quality_counts(quality_table, experiment=None):
+    """Plot visual-defect counts and stringing penalty for ironing runs."""
+    plot_df = quality_table.dropna(subset=["quality_score"]).copy()
+    x = np.arange(len(plot_df))
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    ax.bar(
+        x,
+        plot_df["blob_count"],
+        color="#74a9cf",
+        label="Blob count",
+    )
+    ax.bar(
+        x,
+        plot_df["stringing_penalty"].fillna(0),
+        bottom=plot_df["blob_count"],
+        color="#ef8a62",
+        label="Stringing penalty",
+    )
+    ax.set_xticks(x)
+    ax.set_xticklabels(plot_df["run"], rotation=45)
+    ax.set_ylabel("Visual defect score")
+    ax.set_title(experiment_title("Blob and stringing score", experiment))
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_mass_quality_tradeoff(tradeoff_df, target_mass_g=None, experiment=None):
+    """Plot mass versus visual-quality score for tradeoff decisions."""
+    plot_df = tradeoff_df.dropna(subset=["mass_mean_g", "quality_score"]).copy()
+    if "overall_desirability" in plot_df.columns:
+        color_values = plot_df["overall_desirability"]
+        color_label = "Overall desirability (higher is better)"
+        cmap = "viridis"
+    else:
+        color_values = plot_df["combined_score_0_best"]
+        color_label = "Combined score (lower is better)"
+        cmap = "viridis_r"
+
+    fig, ax = plt.subplots(figsize=(7.2, 5))
+    scatter = ax.scatter(
+        plot_df["mass_mean_g"],
+        plot_df["quality_score"],
+        c=color_values,
+        cmap=cmap,
+        s=85,
+        edgecolor="#333333",
+    )
+    for _, row in plot_df.iterrows():
+        ax.annotate(
+            row["run"],
+            (row["mass_mean_g"], row["quality_score"]),
+            xytext=(5, 5),
+            textcoords="offset points",
+            fontsize=9,
+        )
+    if target_mass_g is not None:
+        ax.axvline(
+            target_mass_g,
+            color="#f28e2b",
+            linewidth=1.5,
+            alpha=0.75,
+            label="Target mass",
+        )
+        ax.legend()
+    ax.set_xlabel("Mass mean (g)")
+    ax.set_ylabel("Visual defect score (lower is better)")
+    ax.set_title(experiment_title("Mass and visual-quality tradeoff", experiment))
+    cbar = fig.colorbar(scatter, ax=ax)
+    cbar.set_label(color_label)
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_desirability_ranking(desirability_df, experiment=None):
+    """Plot overall desirability ranked from best to worst."""
+    plot_df = desirability_df.dropna(subset=["overall_desirability"]).copy()
+    plot_df = plot_df.sort_values("overall_desirability", ascending=True)
+    colors = plt.cm.viridis(plot_df["overall_desirability"])
+
+    fig, ax = plt.subplots(figsize=(8, 4.8))
+    ax.barh(
+        plot_df["run"],
+        plot_df["overall_desirability"],
+        color=colors,
+    )
+    ax.set_xlim(0, 1)
+    ax.set_xlabel("Overall desirability (0 = unacceptable, 1 = best)")
+    ax.set_ylabel("Ironing run")
+    ax.set_title(experiment_title("Mass and quality desirability", experiment))
+    ax.grid(axis="x", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
 def predict_response_from_main_effects(
     coded_setting,
     grand_mean,
@@ -888,6 +1189,95 @@ def real_settings_from_coded(coded_setting, levels, factor_cols=None):
         factor: levels[factor][coded_setting[factor]]
         for factor in factor_cols
     }
+
+
+def build_screening_confirmation_comparison(
+    model,
+    confirmation_runs,
+    levels,
+    response="mass_mean_g",
+):
+    """Compare measured confirmation runs with a fitted screening model."""
+    confirmation_df = pd.DataFrame(confirmation_runs).copy()
+    factor_cols = model["factor_cols"]
+
+    def real_to_coded(factor, real_value):
+        mapping = levels[factor]
+        for coded_value, mapped_value in mapping.items():
+            if np.isclose(real_value, mapped_value):
+                return float(coded_value)
+        coded_levels = np.array(sorted(mapping), dtype=float)
+        real_levels = np.array(
+            [mapping[coded_value] for coded_value in coded_levels],
+            dtype=float,
+        )
+        return float(np.interp(real_value, real_levels, coded_levels))
+
+    coded_df = pd.DataFrame(index=confirmation_df.index)
+    for factor in factor_cols:
+        coded_df[factor] = confirmation_df[factor].apply(
+            lambda value: real_to_coded(factor, value)
+        )
+
+    coefficients = model["coefficients"]
+    predicted = np.full(len(coded_df), coefficients["Intercept"], dtype=float)
+    for factor in factor_cols:
+        predicted += coded_df[factor].to_numpy() * coefficients[factor]
+
+    result_df = confirmation_df.copy()
+    for factor in factor_cols:
+        result_df[f"{factor}_coded"] = coded_df[factor]
+    result_df["predicted_response"] = predicted
+    result_df["prediction_error"] = result_df[response] - predicted
+    result_df["abs_prediction_error"] = result_df["prediction_error"].abs()
+    return result_df
+
+
+def plot_screening_confirmation_comparison(
+    comparison_df,
+    response="mass_mean_g",
+    target_value=None,
+    experiment=None,
+):
+    """Plot observed and screening-model-predicted confirmation responses."""
+    plot_df = comparison_df.dropna(
+        subset=[response, "predicted_response"]
+    ).copy()
+    x = np.arange(len(plot_df))
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.5))
+    ax.plot(
+        x,
+        plot_df[response],
+        color="#08519c",
+        marker="o",
+        linewidth=2,
+        label="Observed",
+    )
+    ax.plot(
+        x,
+        plot_df["predicted_response"],
+        color="#de2d26",
+        marker="s",
+        linewidth=2,
+        label="Main-effect prediction",
+    )
+    if target_value is not None:
+        ax.axhline(
+            target_value,
+            color="#f28e2b",
+            linewidth=1.5,
+            alpha=0.65,
+            label="Target mass",
+        )
+    ax.set_xticks(x)
+    ax.set_xticklabels(plot_df["run"])
+    ax.set_ylabel(response)
+    ax.set_title(experiment_title("Confirmation runs", experiment))
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
 
 
 def build_main_effect_prediction_comparison(
@@ -1759,11 +2149,11 @@ def plot_mass_measurements(
                 repeat_df["mass_mean_g"],
             ):
                 ax.annotate(
-                    f"{run}\n{mass:.{value_digits}f}",
+                    f"{run}: {mass:.{value_digits}f}",
                     xy=(xi, mass),
-                    xytext=(0, 6),
+                    xytext=(9, 14),
                     textcoords="offset points",
-                    ha="center",
+                    ha="left",
                     va="bottom",
                     fontsize=8,
                     color="#1b7837",
@@ -1848,6 +2238,75 @@ def plot_mass_measurements(
         fig.subplots_adjust(right=0.70)
     else:
         fig.subplots_adjust(right=0.82, bottom=0.20)
+    plt.show(block=False)
+
+
+def plot_combined_mass_measurement_sets(
+    measurement_sets,
+    minimum_mass=80,
+    experiment=None,
+):
+    """Compare mean masses from multiple run sets on one shared plot."""
+    colors = ["#2b8cbe", "#31a354", "#756bb1", "#e6550d"]
+    fig, ax = plt.subplots(figsize=(15, 5))
+    tick_positions = []
+    tick_labels = []
+    current_x = 0
+    plotted_values = []
+    nonempty_sets = []
+
+    for set_label, measurements in measurement_sets.items():
+        plot_df = measurements.copy()
+        plot_df["mass_mean_g"] = pd.to_numeric(
+            plot_df["mass_mean_g"],
+            errors="coerce",
+        )
+        plot_df = plot_df.loc[plot_df["mass_mean_g"] > minimum_mass].copy()
+        if not plot_df.empty:
+            nonempty_sets.append((set_label, plot_df))
+
+    for set_index, (set_label, plot_df) in enumerate(nonempty_sets):
+        x = np.arange(current_x, current_x + len(plot_df))
+        color = colors[set_index % len(colors)]
+        y_error = None
+        if "mass_std_g" in plot_df.columns:
+            std_values = pd.to_numeric(plot_df["mass_std_g"], errors="coerce")
+            if std_values.notna().any():
+                y_error = std_values.fillna(0)
+
+        ax.errorbar(
+            x,
+            plot_df["mass_mean_g"],
+            yerr=y_error,
+            color=color,
+            marker="o",
+            markersize=5,
+            linewidth=1.5,
+            capsize=3,
+            label=set_label,
+        )
+        tick_positions.extend(x.tolist())
+        tick_labels.extend(plot_df["run"].tolist())
+        plotted_values.extend(plot_df["mass_mean_g"].tolist())
+
+        current_x += len(plot_df)
+        if set_index < len(nonempty_sets) - 1:
+            ax.axvline(current_x - 0.5, color="#777777", linewidth=1, alpha=0.5)
+            current_x += 1
+
+    if plotted_values:
+        value_range = max(plotted_values) - min(plotted_values)
+        margin = max(0.25, value_range * 0.08)
+        ax.set_ylim(min(plotted_values) - margin, max(plotted_values) + margin)
+
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45, ha="right")
+    ax.set_xlabel("Run")
+    ax.set_ylabel("Mean mass (g)")
+    ax.set_title(experiment_title("Combined mass measurements", experiment))
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
     plt.show(block=False)
 
 

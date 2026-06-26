@@ -197,8 +197,8 @@ IRONING_MASS_MEASUREMENTS_G = {
         9.558,  # I7
         9.718,  # I8
         9.500,  # I9
-        None,  # I10
-        None,  # I11
+        9.477,  # I10
+        9.444,  # I11
     ],
     "mass_2_g": [
         None,  # I1
@@ -214,6 +214,53 @@ IRONING_MASS_MEASUREMENTS_G = {
         None,  # I11
     ],
 }
+
+IRONING_BLOB_COUNTS = {
+    "I1": 7,
+    "I2": 11,
+    "I3": 2,
+    "I4": 3,
+    "I5": 6,
+    "I6": 10,
+    "I7": 1,
+    "I8": 1,
+    "I9": 2,
+    "I10": 2,
+    "I11": 3,
+}
+
+IRONING_STRINGING_RUNS = [
+    "I6",
+]
+
+IRONING_REPEAT_BLOB_COUNTS = {
+    "I8.2": 2,
+}
+
+IRONING_REPEAT_STRINGING_RUNS = []
+
+IRONING_CONFIRMATION_RUNS = [
+    {
+        "run": "IA",
+        "A_flow_ratio": 1.01,
+        "B_nozzle_temp_C": 220,
+        "C_ironing_flow_percent": 2,
+        "D_ironing_speed_mm_s": 60,
+        "mass_mean_g": 9.650,
+        "quality_score": 2.5,
+        "has_stringing": False,
+    },
+    {
+        "run": "IB",
+        "A_flow_ratio": 1.01,
+        "B_nozzle_temp_C": 220,
+        "C_ironing_flow_percent": 2,
+        "D_ironing_speed_mm_s": 45,
+        "mass_mean_g": 9.627,
+        "quality_score": 8.0,
+        "has_stringing": True,
+    },
+]
 
 IRONING_REPEAT_MASS_MEASUREMENTS_G = {
     "mass_1_g": {
