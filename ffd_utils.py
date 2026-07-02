@@ -2132,7 +2132,7 @@ def plot_mass_measurements(
         if not repeat_df.empty:
             repeat_x = repeat_df["x"].to_numpy(dtype=float)
             if repeat_bar_offset is None:
-                repeat_bar_offset = (len(mass_columns) + 1) * bar_width / 2
+                repeat_bar_offset = (len(mass_columns) + 2.4) * bar_width / 2
             repeat_x += repeat_bar_offset
             ax.bar(
                 repeat_x,
@@ -2149,11 +2149,11 @@ def plot_mass_measurements(
                 repeat_df["mass_mean_g"],
             ):
                 ax.annotate(
-                    f"{run}: {mass:.{value_digits}f}",
+                    f"{mass:.{value_digits}f}",
                     xy=(xi, mass),
-                    xytext=(9, 14),
+                    xytext=(0, 10),
                     textcoords="offset points",
-                    ha="left",
+                    ha="center",
                     va="bottom",
                     fontsize=8,
                     color="#1b7837",
@@ -2621,18 +2621,6 @@ def plot_interaction_effects(interaction_effects, experiment=None):
         ascending=False,
     )
 
-    label_col = "Interaction"
-    if "Alias / generator note" in interaction_effects_df.columns:
-        interaction_effects_df["Plot label"] = interaction_effects_df.apply(
-            lambda row: (
-                f"{row['Interaction']}\n= {row['Alias / generator note']}"
-                if row["Alias / generator note"]
-                else row["Interaction"]
-            ),
-            axis=1,
-        )
-        label_col = "Plot label"
-
     interaction_effects_df["Color factor"] = (
         interaction_effects_df["Interaction"].str.split(" x ").str[0]
     )
@@ -2641,17 +2629,17 @@ def plot_interaction_effects(interaction_effects, experiment=None):
         for factor in interaction_effects_df["Color factor"]
     ]
 
-    plt.figure(figsize=(12, 4))
+    plt.figure(figsize=(16, 5))
     plt.bar(
-        interaction_effects_df[label_col],
+        interaction_effects_df["Interaction"],
         interaction_effects_df["Effect"],
         color=colors,
     )
     plt.axhline(0, color="black", linewidth=1)
 
-    plt.ylabel("Interaction effect on mass_mean_g")
+    plt.ylabel("Effect")
     plt.title(experiment_title("Interaction effects plot", experiment))
-    plt.xticks(rotation=45, ha="right")
+    plt.xticks(rotation=35, ha="right")
 
     legend_factors = list(dict.fromkeys(interaction_effects_df["Color factor"]))
     legend_handles = [

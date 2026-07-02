@@ -60,6 +60,46 @@ FD_II_MASS_MEASUREMENTS_G = {
     ],
 }
 
+FD_II_CONCENTRIC_RUN_LABELS = [
+    "RC1",
+    "RC2",
+    "RC3",
+    "RC4",
+    "RC5",
+    "RC6",
+    "RC7",
+    "RC8",
+    "RC9",
+    "RC10",
+    "RC11",
+    "RC12",
+    "RC13",
+    "RC14",
+    "RC15",
+    "RC16",
+]
+
+FD_II_CONCENTRIC_MASS_MEASUREMENTS_G = {
+    "mass_1_g": [
+        83.862,  # RC1
+        None,  # RC2
+        None,  # RC3
+        None,  # RC4
+        None,  # RC5
+        None,  # RC6
+        None,  # RC7
+        None,  # RC8
+        None,  # RC9
+        None,  # RC10
+        87.859,  # RC11
+        None,  # RC12
+        None,  # RC13
+        None,  # RC14
+        None,  # RC15
+        None,  # RC16
+    ],
+}
+
 
 EXTRA_RUN_LABELS = [
     "LD",
