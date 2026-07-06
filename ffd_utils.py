@@ -1027,6 +1027,83 @@ def plot_screening_model_effects(model, experiment=None):
     plt.show(block=False)
 
 
+def plot_combined_screening_model_effects(
+    models,
+    response_labels=None,
+    normalize=True,
+    experiment=None,
+):
+    """Plot comparable signed main effects for multiple screening responses."""
+    if response_labels is None:
+        response_labels = {
+            label: model["response"]
+            for label, model in models.items()
+        }
+
+    effect_frames = []
+    for label, model in models.items():
+        effects = model["statistics_df"].copy()
+        effects = effects[effects["term"] != "Intercept"]
+        effects = effects.rename(columns={"term": "factor", "effect": "main_effect"})
+
+        scale = 1.0
+        axis_label = "Main effect"
+        if normalize:
+            fitted = model["fitted_df"][model["response"]].dropna()
+            response_range = fitted.max() - fitted.min()
+            if pd.notna(response_range) and response_range != 0:
+                scale = response_range
+            axis_label = "Main effect / observed response range"
+
+        effects["response"] = response_labels.get(label, label)
+        effects["plot_effect"] = effects["main_effect"] / scale
+        effect_frames.append(effects[["factor", "response", "plot_effect"]])
+
+    effect_df = pd.concat(effect_frames, ignore_index=True)
+    factors = list(models[next(iter(models))]["factor_cols"])
+    responses = [
+        response_labels.get(label, label)
+        for label in models
+    ]
+
+    x = np.arange(len(factors))
+    bar_width = min(0.34, 0.8 / max(len(responses), 1))
+    offsets = np.linspace(
+        -bar_width * (len(responses) - 1) / 2,
+        bar_width * (len(responses) - 1) / 2,
+        len(responses),
+    )
+    colors = ["#08519c", "#de2d26", "#31a354", "#756bb1"]
+
+    fig, ax = plt.subplots(figsize=(9.5, 4.2))
+    for offset, response, color in zip(offsets, responses, colors):
+        response_df = effect_df[effect_df["response"] == response].set_index("factor")
+        values = [
+            response_df.loc[factor, "plot_effect"]
+            if factor in response_df.index
+            else np.nan
+            for factor in factors
+        ]
+        ax.bar(
+            x + offset,
+            values,
+            width=bar_width,
+            label=response,
+            color=color,
+            alpha=0.88,
+        )
+
+    ax.axhline(0, color="black", linewidth=1)
+    ax.set_xticks(x)
+    ax.set_xticklabels(factors, rotation=35, ha="right")
+    ax.set_ylabel(axis_label)
+    ax.set_title(experiment_title("Combined main-effect screening model", experiment))
+    ax.legend()
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
 def plot_screening_observed_vs_predicted(model, experiment=None):
     """Plot observed versus predicted responses for a screening model."""
     fitted_df = model["fitted_df"]
@@ -2046,6 +2123,9 @@ def plot_mass_measurements(
     reference_details=None,
     value_digits=1,
     repeat_bar_offset=None,
+    extra_measurements_g=None,
+    extra_label="extra mean",
+    extra_color="#756bb1",
 ):
     plot_columns = mass_columns + ["mass_mean_g"]
     if "mass_std_g" in mass_measurements_g.columns:
@@ -2169,6 +2249,46 @@ def plot_mass_measurements(
                     f"mean abs diff {repeatability_df['abs_difference_g'].mean():.3f} g; "
                     f"max {repeatability_df['abs_difference_g'].max():.3f} g"
                 )
+
+    if extra_measurements_g is not None and not extra_measurements_g.empty:
+        extra_df = extra_measurements_g[["run", "mass_mean_g"]].copy()
+        extra_df["mass_mean_g"] = pd.to_numeric(
+            extra_df["mass_mean_g"],
+            errors="coerce",
+        )
+        extra_df = extra_df.dropna(subset=["mass_mean_g"])
+
+        if not extra_df.empty:
+            extra_x = np.arange(
+                len(plot_df) + 1,
+                len(plot_df) + 1 + len(extra_df),
+                dtype=float,
+            )
+            ax.bar(
+                extra_x,
+                extra_df["mass_mean_g"],
+                width=bar_width,
+                color=extra_color,
+                label=extra_label,
+                alpha=0.88,
+            )
+            for xi, run, mass in zip(
+                extra_x,
+                extra_df["run"],
+                extra_df["mass_mean_g"],
+            ):
+                ax.annotate(
+                    f"{mass:.{value_digits}f}",
+                    xy=(xi, mass),
+                    xytext=(0, 10),
+                    textcoords="offset points",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                    color=extra_color,
+                )
+            tick_positions.extend(extra_x.tolist())
+            tick_labels.extend(extra_df["run"].tolist())
 
     ax.plot(
         x,

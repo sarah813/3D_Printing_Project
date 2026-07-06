@@ -212,6 +212,7 @@ BOX_BEHNKEN_NEW_SCALE_MASS_MEASUREMENTS_G = {
 }
 
 
+# Ironing screening design: planned I1-I8 half-fraction plus I9-I11 center runs.
 IRONING_RUN_LABELS = [
     "I1",
     "I2",
@@ -255,6 +256,39 @@ IRONING_MASS_MEASUREMENTS_G = {
     ],
 }
 
+# Repeat prints of original ironing screening runs.
+# Use the decimal suffix for the print number of the same original run.
+IRONING_REPEAT_MASS_MEASUREMENTS_G = {
+    "mass_1_g": {
+        "I1.2": None,
+        "I2.2": None,
+        "I3.2": None,
+        "I4.2": None,
+        "I5.2": None,
+        "I6.2": None,
+        "I7.2": None,
+        "I8.2": 9.712,
+        "I8.3": 9.690,
+        "I9.2": None,
+        "I10.2": None,
+        "I11.2": None,
+    },
+    "mass_2_g": {
+        "I1.2": None,
+        "I2.2": None,
+        "I3.2": None,
+        "I4.2": None,
+        "I5.2": None,
+        "I6.2": None,
+        "I7.2": None,
+        "I8.2": None,
+        "I8.3": None,
+        "I9.2": None,
+        "I10.2": None,
+        "I11.2": None,
+    },
+}
+
 IRONING_BLOB_COUNTS = {
     "I1": 7,
     "I2": 11,
@@ -279,6 +313,8 @@ IRONING_REPEAT_BLOB_COUNTS = {
 
 IRONING_REPEAT_STRINGING_RUNS = []
 
+# Ironing confirmation/optimization runs live here, separate from the planned
+# screening matrix. Add future mixed-level checks or optimized settings below.
 IRONING_CONFIRMATION_RUNS = [
     {
         "run": "IA",
@@ -300,33 +336,24 @@ IRONING_CONFIRMATION_RUNS = [
         "quality_score": 8.0,
         "has_stringing": True,
     },
+    {
+        "run": "I8-lowT",
+        "A_flow_ratio": 1.01,
+        "B_nozzle_temp_C": 215,
+        "C_ironing_flow_percent": 2,
+        "D_ironing_speed_mm_s": 60,
+        "mass_mean_g": 9.670,
+        "quality_score": None,
+        "has_stringing": None,
+    },
+    {
+        "run": "I8-medT",
+        "A_flow_ratio": 1.01,
+        "B_nozzle_temp_C": 220,
+        "C_ironing_flow_percent": 2,
+        "D_ironing_speed_mm_s": 60,
+        "mass_mean_g": 9.656,
+        "quality_score": None,
+        "has_stringing": None,
+    },
 ]
-
-IRONING_REPEAT_MASS_MEASUREMENTS_G = {
-    "mass_1_g": {
-        "I1.2": None,
-        "I2.2": None,
-        "I3.2": None,
-        "I4.2": None,
-        "I5.2": None,
-        "I6.2": None,
-        "I7.2": None,
-        "I8.2": 9.712,
-        "I9.2": None,
-        "I10.2": None,
-        "I11.2": None,
-    },
-    "mass_2_g": {
-        "I1.2": None,
-        "I2.2": None,
-        "I3.2": None,
-        "I4.2": None,
-        "I5.2": None,
-        "I6.2": None,
-        "I7.2": None,
-        "I8.2": None,
-        "I9.2": None,
-        "I10.2": None,
-        "I11.2": None,
-    },
-}
