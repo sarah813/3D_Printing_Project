@@ -334,6 +334,11 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
         columns={"mass_mean_g": "repeat_mass_mean_g"}
     )
     repeat_df["original_run"] = repeat_df["run"].str.split(".").str[0]
+    repeat_df = (
+        repeat_df.groupby("original_run", as_index=False)["repeat_mass_mean_g"]
+        .mean()
+    )
+    repeat_df["run_repeat"] = repeat_df["original_run"] + " repeat mean"
 
     repeatability_df = repeat_df.merge(
         original_df,
@@ -2139,6 +2144,7 @@ def plot_mass_measurements(
     x = np.arange(len(plot_df))
     bar_width = 0.22
     summary_lines = []
+    repeat_original_runs_with_data = set()
 
     fig, ax = plt.subplots(figsize=(16, 4.3))
     offsets = np.linspace(
@@ -2210,6 +2216,14 @@ def plot_mass_measurements(
         repeat_df = repeat_df.dropna(subset=["x", "mass_mean_g"])
 
         if not repeat_df.empty:
+            repeat_df = (
+                repeat_df.groupby("original_run", as_index=False)
+                .agg({
+                    "x": "first",
+                    "mass_mean_g": "mean",
+                })
+            )
+            repeat_original_runs_with_data = set(repeat_df["original_run"])
             repeat_x = repeat_df["x"].to_numpy(dtype=float)
             if repeat_bar_offset is None:
                 repeat_bar_offset = (len(mass_columns) + 2.4) * bar_width / 2
@@ -2225,7 +2239,7 @@ def plot_mass_measurements(
 
             for xi, run, mass in zip(
                 repeat_x,
-                repeat_df["run"],
+                repeat_df["original_run"],
                 repeat_df["mass_mean_g"],
             ):
                 ax.annotate(
@@ -2236,7 +2250,7 @@ def plot_mass_measurements(
                     ha="center",
                     va="bottom",
                     fontsize=8,
-                    color="#1b7837",
+                    color="black",
                 )
 
             repeatability_df = calculate_repeatability(
@@ -2299,8 +2313,8 @@ def plot_mass_measurements(
         label=mean_label,
     )
 
-    for xi, mass in zip(x, plot_df["mass_mean_g"]):
-        if pd.notna(mass):
+    for xi, run, mass in zip(x, plot_df.index, plot_df["mass_mean_g"]):
+        if pd.notna(mass) and run not in repeat_original_runs_with_data:
             ax.annotate(
                 f"{mass:.{value_digits}f}",
                 xy=(xi, mass),
