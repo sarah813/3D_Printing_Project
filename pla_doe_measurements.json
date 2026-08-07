@@ -1,0 +1,3989 @@
+{
+  "material": "PLA matte",
+  "schema_version": 1,
+  "constants": {
+    "density_pla_matte_g_cm3": 1.31,
+    "v_ri_mm3": 10464.0,
+    "v_rii_mm3": 64465.765
+  },
+  "response_fields": [
+    "min_pressure_mbar",
+    "pump_down_speed",
+    "outgassing_rate"
+  ],
+  "visual_result_fields": [
+    "blob_count",
+    "has_stringing",
+    "quality_score",
+    "extra_extrusion",
+    "notes"
+  ],
+  "designs": [
+    {
+      "name": "FD_I",
+      "purpose": "First PLA fractional factorial screening including wall-count factor.",
+      "description": "First fractional factorial design.",
+      "factors": [
+        "A_flow_ratio",
+        "B_nozzle_temp",
+        "C_speed",
+        "D_line_width",
+        "E_layer_height",
+        "F_walls"
+      ],
+      "levels": {
+        "A_flow_ratio": {
+          "-1": 1.0,
+          "1": 1.05
+        },
+        "B_nozzle_temp": {
+          "-1": 220,
+          "1": 230
+        },
+        "C_speed": {
+          "-1": 50,
+          "1": 200
+        },
+        "D_line_width": {
+          "-1": 0.62,
+          "1": 0.75
+        },
+        "E_layer_height": {
+          "-1": 0.12,
+          "1": 0.18
+        },
+        "F_walls": {
+          "-1": 4,
+          "1": 10
+        }
+      },
+      "runs": [
+        {
+          "run": "R1",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              13.681,
+              13.505
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R2",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              13.657,
+              13.48
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "R2.2",
+                "measurements": {
+                  "weight_g": [
+                    13.795
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": null,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R3",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 200,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              13.622,
+              13.444
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R4",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 200,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              13.594,
+              13.414
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R5",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              13.796,
+              13.621
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R6",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              13.843,
+              13.664
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R7",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 200,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              13.972,
+              13.793
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R8",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 200,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              13.973,
+              13.795
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R9",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              14.48,
+              14.3
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "R9.2",
+                "measurements": {
+                  "weight_g": [
+                    14.555
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": null,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R10",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              14.541,
+              14.357
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R11",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 200,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              14.554,
+              14.372
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R12",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 200,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              14.545,
+              14.364
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "R12.2",
+                "measurements": {
+                  "weight_g": [
+                    14.628
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": null,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R13",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              14.39,
+              14.21
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R14",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1,
+            "F_walls": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18,
+            "F_walls": 4
+          },
+          "measurements": {
+            "weight_g": [
+              14.445,
+              14.262
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R15",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 200,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              14.403,
+              14.221
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "R16",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1,
+            "F_walls": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 200,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18,
+            "F_walls": 10
+          },
+          "measurements": {
+            "weight_g": [
+              14.362,
+              14.179
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "FD_II",
+      "purpose": "Second PLA fractional factorial screening without wall-count factor, rectilinear RR pattern.",
+      "description": "Second fractional factorial design without wall-count factor.",
+      "factors": [
+        "A_flow_ratio",
+        "B_nozzle_temp",
+        "C_speed",
+        "D_line_width",
+        "E_layer_height"
+      ],
+      "levels": {
+        "A_flow_ratio": {
+          "-1": 1.0,
+          "1": 1.05
+        },
+        "B_nozzle_temp": {
+          "-1": 220,
+          "1": 230
+        },
+        "C_speed": {
+          "-1": 50,
+          "1": 100
+        },
+        "D_line_width": {
+          "-1": 0.62,
+          "1": 0.75
+        },
+        "E_layer_height": {
+          "-1": 0.12,
+          "1": 0.18
+        }
+      },
+      "runs": [
+        {
+          "run": "RR1",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              84.536
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR2",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              84.55
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR3",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              84.349
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR4",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              84.496
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR5",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              85.314
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR6",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              84.483
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR7",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              85.337
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR8",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              84.32
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR9",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              88.351
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR10",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              87.76
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR11",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              89.017
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR12",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              88.166
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR13",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              87.925
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR14",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              88.548
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR15",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              87.809
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RR16",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              88.671
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "FD_II_concentric",
+      "purpose": "Concentric-pattern follow-up using FD_II settings.",
+      "description": "Concentric toolpath follow-up using FD II settings.",
+      "factors": [
+        "A_flow_ratio",
+        "B_nozzle_temp",
+        "C_speed",
+        "D_line_width",
+        "E_layer_height"
+      ],
+      "levels": {
+        "A_flow_ratio": {
+          "-1": 1.0,
+          "1": 1.05
+        },
+        "B_nozzle_temp": {
+          "-1": 220,
+          "1": 230
+        },
+        "C_speed": {
+          "-1": 50,
+          "1": 100
+        },
+        "D_line_width": {
+          "-1": 0.62,
+          "1": 0.75
+        },
+        "E_layer_height": {
+          "-1": 0.12,
+          "1": 0.18
+        }
+      },
+      "runs": [
+        {
+          "run": "RC1",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              83.862
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC2",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC3",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC4",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC5",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC6",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC7",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC8",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC9",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC10",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC11",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              87.859
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC12",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": -1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 220,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.12
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC13",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC14",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": -1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 50,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC15",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "RC16",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp": 1,
+            "C_speed": 1,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.05,
+            "B_nozzle_temp": 230,
+            "C_speed": 100,
+            "D_line_width": 0.75,
+            "E_layer_height": 0.18
+          },
+          "measurements": {
+            "weight_g": [
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Extra_runs",
+      "purpose": "Additional exploratory and confirmation runs.",
+      "description": "Additional exploratory runs.",
+      "factors": [],
+      "levels": {
+        "nozzle_line_width_grid": {
+          "B_nozzle_temp": [
+            225,
+            230,
+            235
+          ],
+          "D_line_width": [
+            0.62,
+            0.7,
+            0.8
+          ]
+        }
+      },
+      "runs": [
+        {
+          "run": "LD",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "HD",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E1",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              88.964,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E2",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E3",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E4",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E5",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "E6",
+          "matrix_code": null,
+          "real_parameters": {},
+          "measurements": {
+            "weight_g": [
+              null,
+              null,
+              null,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Box_Behnken_new_scale",
+      "purpose": "Three-factor Box-Behnken follow-up measured on the new scale.",
+      "description": "Box-Behnken follow-up measured on the new scale.",
+      "factors": [
+        "B_nozzle_temp",
+        "D_line_width",
+        "E_layer_height"
+      ],
+      "levels": {
+        "B_nozzle_temp": {
+          "-1": 225,
+          "0": 230,
+          "1": 235
+        },
+        "D_line_width": {
+          "-1": 0.62,
+          "0": 0.7,
+          "1": 0.8
+        },
+        "E_layer_height": {
+          "-1": 0.1,
+          "0": 0.12,
+          "1": 0.14
+        }
+      },
+      "fixed_settings": {
+        "flow_ratio": 1.05,
+        "volumetric_speed_mm3_s": 8
+      },
+      "runs": [
+        {
+          "run": "B1",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": -1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.1,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.09,
+              89.1
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B2",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": -1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.14,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.015,
+              89.022
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B3",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": 1,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.8,
+            "E_layer_height": 0.1,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.986,
+              88.996
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B4",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": 1,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.8,
+            "E_layer_height": 0.14,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.171,
+              89.183
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B5",
+          "matrix_code": {
+            "B_nozzle_temp": -1,
+            "D_line_width": 0,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 225,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.1,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.313,
+              89.316
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B6",
+          "matrix_code": {
+            "B_nozzle_temp": -1,
+            "D_line_width": 0,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 225,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.14,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.789,
+              89.796
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B7",
+          "matrix_code": {
+            "B_nozzle_temp": 1,
+            "D_line_width": 0,
+            "E_layer_height": -1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 235,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.1,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.72,
+              89.73
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B8",
+          "matrix_code": {
+            "B_nozzle_temp": 1,
+            "D_line_width": 0,
+            "E_layer_height": 1
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 235,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.14,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.306,
+              89.312
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B9",
+          "matrix_code": {
+            "B_nozzle_temp": -1,
+            "D_line_width": -1,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 225,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.868,
+              88.863
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B10",
+          "matrix_code": {
+            "B_nozzle_temp": -1,
+            "D_line_width": 1,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 225,
+            "D_line_width": 0.8,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.093,
+              89.105
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B11",
+          "matrix_code": {
+            "B_nozzle_temp": 1,
+            "D_line_width": -1,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 235,
+            "D_line_width": 0.62,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.492,
+              88.502
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B12",
+          "matrix_code": {
+            "B_nozzle_temp": 1,
+            "D_line_width": 1,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 235,
+            "D_line_width": 0.8,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              89.101,
+              89.111
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B13",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": 0,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.821,
+              88.821
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B14",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": 0,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.855,
+              88.864
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "B15",
+          "matrix_code": {
+            "B_nozzle_temp": 0,
+            "D_line_width": 0,
+            "E_layer_height": 0
+          },
+          "real_parameters": {
+            "B_nozzle_temp": 230,
+            "D_line_width": 0.7,
+            "E_layer_height": 0.12,
+            "flow_ratio": 1.05,
+            "volumetric_speed_mm3_s": 8
+          },
+          "measurements": {
+            "weight_g": [
+              88.89,
+              88.903
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": []
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ironing",
+      "purpose": "Ironing half-fraction screening design plus center and confirmation runs.",
+      "description": "Ironing half-fraction screening design plus center runs.",
+      "factors": [
+        "A_flow_ratio",
+        "B_nozzle_temp_C",
+        "C_ironing_flow_percent",
+        "D_ironing_speed_mm_s"
+      ],
+      "levels": {
+        "A_flow_ratio": {
+          "-1": 0.99,
+          "0": 1.0,
+          "1": 1.01
+        },
+        "B_nozzle_temp_C": {
+          "-1": 215,
+          "0": 220,
+          "1": 225
+        },
+        "C_ironing_flow_percent": {
+          "-1": 0,
+          "0": 1,
+          "1": 2
+        },
+        "D_ironing_speed_mm_s": {
+          "-1": 30,
+          "0": 45,
+          "1": 60
+        }
+      },
+      "fixed_settings": {
+        "C_ironing_line_spacing_mm": 0.15,
+        "E_layer_height": 0.12,
+        "F_line_width_mm": 0.62
+      },
+      "runs": [
+        {
+          "run": "I1",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp_C": -1,
+            "C_ironing_flow_percent": -1,
+            "D_ironing_speed_mm_s": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 0.99,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 30,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.452,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I1.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 7,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I2",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp_C": -1,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 0.99,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.623,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I2.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 11,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I3",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp_C": 1,
+            "C_ironing_flow_percent": -1,
+            "D_ironing_speed_mm_s": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 0.99,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.477,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I3.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 2,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I4",
+          "matrix_code": {
+            "A_flow_ratio": -1,
+            "B_nozzle_temp_C": 1,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 0.99,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 30,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.537,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I4.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 3,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I5",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp_C": -1,
+            "C_ironing_flow_percent": -1,
+            "D_ironing_speed_mm_s": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.551,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I5.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 6,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I6",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp_C": -1,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 30,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.678,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I6.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 10,
+            "has_stringing": true,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I7",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp_C": 1,
+            "C_ironing_flow_percent": -1,
+            "D_ironing_speed_mm_s": -1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 30,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.558,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I7.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 1,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I8",
+          "matrix_code": {
+            "A_flow_ratio": 1,
+            "B_nozzle_temp_C": 1,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": 1
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.718,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I8.2",
+                "measurements": {
+                  "weight_g": [
+                    9.734,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": 2,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              },
+              {
+                "run": "I8.3",
+                "measurements": {
+                  "weight_g": [
+                    9.729,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              },
+              {
+                "run": "I8.4",
+                "measurements": {
+                  "weight_g": [
+                    9.69,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 1,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I9",
+          "matrix_code": {
+            "A_flow_ratio": 0,
+            "B_nozzle_temp_C": 0,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 0
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": 45,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.5,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I9.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 2,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I10",
+          "matrix_code": {
+            "A_flow_ratio": 0,
+            "B_nozzle_temp_C": 0,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 0
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": 45,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.477,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I10.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 2,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I11",
+          "matrix_code": {
+            "A_flow_ratio": 0,
+            "B_nozzle_temp_C": 0,
+            "C_ironing_flow_percent": 0,
+            "D_ironing_speed_mm_s": 0
+          },
+          "real_parameters": {
+            "A_flow_ratio": 1.0,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 1,
+            "D_ironing_speed_mm_s": 45,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.444,
+              null
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [
+              {
+                "run": "I11.2",
+                "measurements": {
+                  "weight_g": [
+                    null,
+                    null
+                  ],
+                  "density_g_cm3": [],
+                  "porosity_percent": [],
+                  "leakage_rate": [],
+                  "log_leakage_rate": [],
+                  "repeats": []
+                },
+                "responses": {
+                  "min_pressure_mbar": null,
+                  "pump_down_speed": null,
+                  "outgassing_rate": null
+                },
+                "visual_result": {
+                  "blob_count": null,
+                  "has_stringing": false,
+                  "quality_score": null,
+                  "notes": ""
+                }
+              }
+            ]
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": 3,
+            "has_stringing": false,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "IA",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.65
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.65
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": false,
+            "quality_score": 2.5,
+            "notes": ""
+          }
+        },
+        {
+          "run": "IB",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 45,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.627
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.627
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": true,
+            "quality_score": 8.0,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I8-lowT",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.67
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.67
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I8-medT",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 220,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.656
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.656
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": null,
+            "quality_score": null,
+            "notes": ""
+          }
+        },
+        {
+          "run": "I8-T1",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.753
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.753
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": true,
+            "quality_score": 8,
+            "notes": "",
+            "extra_extrusion": true
+          }
+        },
+        {
+          "run": "I8-T2",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 215,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 60,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.735
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.735
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": true,
+            "quality_score": 15,
+            "notes": "",
+            "extra_extrusion": true
+          }
+        },
+        {
+          "run": "I8-T3",
+          "matrix_code": null,
+          "real_parameters": {
+            "A_flow_ratio": 1.01,
+            "B_nozzle_temp_C": 225,
+            "C_ironing_flow_percent": 2,
+            "D_ironing_speed_mm_s": 45,
+            "C_ironing_line_spacing_mm": 0.15,
+            "E_layer_height": 0.12,
+            "F_line_width_mm": 0.62
+          },
+          "measurements": {
+            "weight_g": [
+              9.688
+            ],
+            "density_g_cm3": [],
+            "porosity_percent": [],
+            "leakage_rate": [],
+            "log_leakage_rate": [],
+            "repeats": [],
+            "weight_mean_g": 9.688
+          },
+          "responses": {
+            "min_pressure_mbar": null,
+            "pump_down_speed": null,
+            "outgassing_rate": null
+          },
+          "visual_result": {
+            "blob_count": null,
+            "has_stringing": false,
+            "quality_score": 8,
+            "notes": "",
+            "extra_extrusion": true
+          }
+        }
+      ]
+    }
+  ]
+}

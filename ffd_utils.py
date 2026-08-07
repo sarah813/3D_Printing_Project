@@ -29,6 +29,42 @@ FACTOR_COLORS = {
 }
 
 
+def _term_base_factor(term):
+    return term.split(":")[0].replace("^2", "")
+
+
+def _draw_vertical_striped_bar(ax, x, height, colors, width=0.8):
+    """Draw a vertical interaction bar with 45-degree hatch stripes."""
+    ax.bar(x, height, color=colors[0], width=width, zorder=2)
+    with plt.rc_context({"hatch.linewidth": 1.8}):
+        ax.bar(
+            x,
+            height,
+            color="none",
+            edgecolor=colors[1],
+            hatch="///",
+            linewidth=0,
+            width=width,
+            zorder=3,
+        )
+
+
+def _draw_horizontal_striped_bar(ax, y, width, colors, height=0.8):
+    """Draw a horizontal interaction bar with 45-degree hatch stripes."""
+    ax.barh(y, width, color=colors[0], height=height, zorder=2)
+    with plt.rc_context({"hatch.linewidth": 1.8}):
+        ax.barh(
+            y,
+            width,
+            color="none",
+            edgecolor=colors[1],
+            hatch="///",
+            linewidth=0,
+            height=height,
+            zorder=3,
+        )
+
+
 def create_fractional_factorial_design(include_walls=True):
     """Create the 16-run coded fractional factorial design."""
     base_design = np.array(
@@ -1145,6 +1181,251 @@ def plot_screening_observed_vs_predicted(model, experiment=None):
     plt.show(block=False)
 
 
+def plot_augmented_model_pareto(model, experiment=None):
+    """Pareto chart from regression t-values for an unbalanced augmented model."""
+    effect_df = model["statistics_df"].query("term != 'Intercept'").copy()
+    use_t_values = effect_df["t_value"].notna().any()
+    if use_t_values:
+        effect_df["plot_value"] = effect_df["t_value"].abs()
+        x_label = "Absolute standardised effect |t|"
+    else:
+        effect_df["plot_value"] = effect_df["effect"].abs()
+        x_label = "Absolute regression effect"
+
+    effect_df = effect_df.sort_values("plot_value", ascending=True)
+    colors = [FACTOR_COLORS.get(term, "#4c78a8") for term in effect_df["term"]]
+
+    fig, ax = plt.subplots(figsize=(9, 4.8))
+    ax.barh(effect_df["term"], effect_df["plot_value"], color=colors)
+    ax.set_xlabel(x_label)
+    ax.set_title(experiment_title("Augmented regression Pareto chart", experiment))
+    ax.grid(axis="x", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_augmented_main_effects(
+    model,
+    levels,
+    experiment=None,
+    plot_label="Augmented regression main effects",
+):
+    """Plot fitted low/high main effects from a coded regression model."""
+    factor_cols = model["factor_cols"]
+    coefficients = model["coefficients"]
+    response = model["response"]
+    intercept = coefficients["Intercept"]
+
+    baseline = {
+        factor: 0 if 0 in levels.get(factor, {}) else 0
+        for factor in factor_cols
+    }
+
+    fig, axes = plt.subplots(
+        1,
+        len(factor_cols),
+        figsize=(3.55 * len(factor_cols), 4.25),
+        sharey=True,
+    )
+    if len(factor_cols) == 1:
+        axes = [axes]
+
+    plotted_values = []
+    factor_plot_data = {}
+    for factor in factor_cols:
+        coded_levels = [-1, 1]
+        if 0 in levels.get(factor, {}):
+            coded_levels = [-1, 0, 1]
+
+        rows = []
+        for coded_level in coded_levels:
+            coded_setting = baseline.copy()
+            coded_setting[factor] = coded_level
+            predicted = intercept + sum(
+                coefficients[term] * coded_setting[term]
+                for term in factor_cols
+            )
+            real_value = levels[factor].get(coded_level, coded_level)
+            rows.append((real_value, predicted))
+            plotted_values.append(predicted)
+        factor_plot_data[factor] = rows
+
+    y_min = min(plotted_values)
+    y_max = max(plotted_values)
+    y_padding = 0.12 * (y_max - y_min) if y_max > y_min else 0.1
+
+    for ax, factor in zip(axes, factor_cols):
+        factor_color = FACTOR_COLORS.get(factor, "#08519c")
+        rows = factor_plot_data[factor]
+        x_values = [row[0] for row in rows]
+        predicted_values = [row[1] for row in rows]
+        response_range = max(predicted_values) - min(predicted_values)
+        x_span = max(x_values) - min(x_values) if max(x_values) > min(x_values) else 1
+        ax.set_xlim(min(x_values) - 0.08 * x_span, max(x_values) + 0.08 * x_span)
+
+        ax.set_xticks(x_values)
+        ax.set_xticklabels([f"{value:g}" for value in x_values])
+        ax.set_title(factor)
+        ax.set_xlabel("Real factor value")
+        ax.set_ylabel(f"Predicted {response}")
+        ax.set_ylim(y_min - y_padding, y_max + y_padding)
+        x_left, x_right = ax.get_xlim()
+        y_bottom, y_top = ax.get_ylim()
+        x_safe = 0.10 * (x_right - x_left)
+        y_safe = 0.09 * (y_top - y_bottom)
+
+        ax.plot(x_values, predicted_values, marker="o", color=factor_color)
+        for x_value, predicted in zip(x_values, predicted_values):
+            label_x = min(max(x_value, x_left + x_safe), x_right - x_safe)
+            if predicted > y_top - 1.8 * y_safe:
+                label_y = predicted - y_safe
+                va = "top"
+            elif predicted < y_bottom + 1.8 * y_safe:
+                label_y = predicted + y_safe
+                va = "bottom"
+            else:
+                label_y = predicted + y_safe
+                va = "bottom"
+
+            ax.text(
+                label_x,
+                label_y,
+                f"{predicted:.2f}",
+                ha="center",
+                va=va,
+                fontsize=8,
+                color=factor_color,
+                clip_on=True,
+                bbox={
+                    "boxstyle": "round,pad=0.15",
+                    "facecolor": "white",
+                    "edgecolor": "none",
+                    "alpha": 0.78,
+                },
+            )
+
+        ax.tick_params(axis="y", labelleft=True)
+        ax.grid(alpha=0.25)
+        ax.text(
+        0.5,
+            -0.30,
+            f"Response range: delta = {response_range:.2f} g",
+            transform=ax.transAxes,
+            ha="center",
+            va="top",
+            fontsize=9,
+            color=factor_color,
+        )
+
+    fig.suptitle(experiment_title(plot_label, experiment))
+    fig.subplots_adjust(
+        left=0.06,
+        right=0.985,
+        bottom=0.24,
+        top=0.78,
+        wspace=0.46,
+    )
+    plt.show(block=False)
+
+
+def plot_augmented_observed_vs_predicted(
+    model,
+    confirmation_run="E1",
+    experiment=None,
+):
+    """Observed-versus-predicted plot with one confirmation run highlighted."""
+    fitted_df = model["fitted_df"].copy()
+    response = model["response"]
+    run_col = "Run" if "Run" in fitted_df.columns else None
+    if run_col is None:
+        fitted_df = fitted_df.reset_index().rename(columns={"index": "Run"})
+        run_col = "Run"
+
+    confirmation_mask = fitted_df[run_col].astype(str).eq(confirmation_run)
+    screening = fitted_df[~confirmation_mask]
+    confirmation = fitted_df[confirmation_mask]
+
+    fig, ax = plt.subplots(figsize=(6.2, 5.6))
+    ax.scatter(
+        screening[response],
+        screening["predicted_response"],
+        color="#08519c",
+        label="RR1-RR16",
+    )
+    if not confirmation.empty:
+        ax.scatter(
+            confirmation[response],
+            confirmation["predicted_response"],
+            marker="*",
+            s=190,
+            color="#f28e2b",
+            edgecolor="black",
+            linewidth=0.5,
+            label=confirmation_run,
+            zorder=4,
+        )
+
+    minimum = min(fitted_df[response].min(), fitted_df["predicted_response"].min())
+    maximum = max(fitted_df[response].max(), fitted_df["predicted_response"].max())
+    ax.plot([minimum, maximum], [minimum, maximum], color="#333333", linestyle="--")
+
+    for _, row in fitted_df.iterrows():
+        ax.annotate(
+            str(row[run_col]),
+            (row[response], row["predicted_response"]),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+
+    ax.set_xlabel(f"Measured {response}")
+    ax.set_ylabel(f"Predicted {response}")
+    ax.set_title(experiment_title("Augmented actual vs predicted", experiment))
+    ax.legend(frameon=False)
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_augmented_residuals(model, confirmation_run="E1", experiment=None):
+    """Residuals versus predicted response with one confirmation run highlighted."""
+    fitted_df = model["fitted_df"].copy()
+    run_col = "Run" if "Run" in fitted_df.columns else None
+    if run_col is None:
+        fitted_df = fitted_df.reset_index().rename(columns={"index": "Run"})
+        run_col = "Run"
+
+    confirmation_mask = fitted_df[run_col].astype(str).eq(confirmation_run)
+    colors = np.where(confirmation_mask, "#f28e2b", "#08519c")
+    sizes = np.where(confirmation_mask, 130, 45)
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    ax.scatter(
+        fitted_df["predicted_response"],
+        fitted_df["residual"],
+        color=colors,
+        s=sizes,
+        edgecolor="black",
+        linewidth=0.4,
+    )
+    for _, row in fitted_df.iterrows():
+        ax.annotate(
+            str(row[run_col]),
+            (row["predicted_response"], row["residual"]),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+
+    ax.axhline(0, color="#333333", linewidth=1)
+    ax.set_xlabel(f"Predicted {model['response']}")
+    ax.set_ylabel("Residual g")
+    ax.set_title(experiment_title("Augmented residuals", experiment))
+    ax.grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
 def plot_quality_counts(quality_table, experiment=None):
     """Plot visual-defect counts and stringing penalty for ironing runs."""
     plot_df = quality_table.dropna(subset=["quality_score"]).copy()
@@ -1634,6 +1915,27 @@ def fit_quadratic_response_surface(matrix, response="mass_mean_g", factor_cols=N
     }
 
 
+def format_quadratic_model_formula(model, response_label=None, digits=4):
+    """Format the fitted quadratic response-surface equation in coded units."""
+    coefficients = model["coefficients"]
+    response_label = response_label or model["response"]
+
+    def term_label(term):
+        if ":" in term:
+            factor1, factor2 = term.split(":")
+            return f"{factor1}*{factor2}"
+        return term
+
+    formula = f"{response_label} = {coefficients['Intercept']:.{digits}f}"
+    for term, coefficient in coefficients.items():
+        if term == "Intercept":
+            continue
+        sign = "+" if coefficient >= 0 else "-"
+        formula += f" {sign} {abs(coefficient):.{digits}f}*{term_label(term)}"
+
+    return formula
+
+
 def build_quadratic_anova_table(model):
     """Build an overall ANOVA table for a fitted quadratic response model."""
     response = model["response"]
@@ -1683,11 +1985,23 @@ def plot_quadratic_pareto(model, experiment=None, alpha=0.05):
     term_df = term_df.sort_values("absolute_t_value", ascending=True)
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    colors = [
-        FACTOR_COLORS.get(term.split(":")[0].replace("^2", ""), "#7f7f7f")
-        for term in term_df["term"]
-    ]
-    ax.barh(term_df["term"], term_df["absolute_t_value"], color=colors)
+    y = np.arange(len(term_df))
+    for yi, (_, row) in zip(y, term_df.iterrows()):
+        term = row["term"]
+        effect = row["absolute_t_value"]
+        if ":" in term:
+            factor1, factor2 = term.split(":")
+            colors = [
+                FACTOR_COLORS.get(factor1, "#7f7f7f"),
+                FACTOR_COLORS.get(factor2, "#7f7f7f"),
+            ]
+            _draw_horizontal_striped_bar(ax, yi, effect, colors)
+        else:
+            color = FACTOR_COLORS.get(_term_base_factor(term), "#7f7f7f")
+            ax.barh(yi, effect, color=color, height=0.8)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(term_df["term"])
     ax.set_xlabel("Absolute standardized effect (|t|)")
     ax.set_title(experiment_title("Pareto chart of quadratic model effects", experiment))
     ax.grid(axis="x", alpha=0.25)
@@ -1718,12 +2032,27 @@ def plot_quadratic_coefficients(model, experiment=None):
     coefficient_df = coefficient_df[coefficient_df["term"] != "Intercept"]
 
     fig, ax = plt.subplots(figsize=(10, 4))
-    colors = [
-        FACTOR_COLORS.get(term.split(":")[0].replace("^2", ""), "#7f7f7f")
-        for term in coefficient_df["term"]
-    ]
-    ax.bar(coefficient_df["term"], coefficient_df["coefficient"], color=colors)
+    x = np.arange(len(coefficient_df))
+
+    for xi, (_, row) in zip(x, coefficient_df.iterrows()):
+        term = row["term"]
+        coefficient = row["coefficient"]
+
+        if ":" in term:
+            factor1, factor2 = term.split(":")
+            colors = [
+                FACTOR_COLORS.get(factor1, "#7f7f7f"),
+                FACTOR_COLORS.get(factor2, "#7f7f7f"),
+            ]
+            _draw_vertical_striped_bar(ax, xi, coefficient, colors)
+        else:
+            factor = _term_base_factor(term)
+            color = FACTOR_COLORS.get(factor, "#7f7f7f")
+            ax.bar(xi, coefficient, color=color, width=0.8)
+
     ax.axhline(0, color="black", linewidth=1)
+    ax.set_xticks(x)
+    ax.set_xticklabels(coefficient_df["term"])
     ax.set_ylabel(f"Coefficient on {model['response']}")
     ax.set_title(experiment_title("Quadratic response-surface coefficients", experiment))
     ax.tick_params(axis="x", rotation=45)
@@ -2131,6 +2460,7 @@ def plot_mass_measurements(
     extra_measurements_g=None,
     extra_label="extra mean",
     extra_color="#756bb1",
+    show_mean_line=True,
 ):
     plot_columns = mass_columns + ["mass_mean_g"]
     if "mass_std_g" in mass_measurements_g.columns:
@@ -2200,12 +2530,6 @@ def plot_mass_measurements(
             ha="left",
             va="center",
             fontsize=9,
-            bbox={
-                "boxstyle": "round,pad=0.35",
-                "facecolor": "white",
-                "edgecolor": reference_color,
-                "alpha": 0.9,
-            },
         )
 
     if repeat_measurements_g is not None and not repeat_measurements_g.empty:
@@ -2304,14 +2628,15 @@ def plot_mass_measurements(
             tick_positions.extend(extra_x.tolist())
             tick_labels.extend(extra_df["run"].tolist())
 
-    ax.plot(
-        x,
-        plot_df["mass_mean_g"],
-        color="#000000",
-        marker="o",
-        linewidth=2,
-        label=mean_label,
-    )
+    if show_mean_line:
+        ax.plot(
+            x,
+            plot_df["mass_mean_g"],
+            color="#000000",
+            marker="o",
+            linewidth=2,
+            label=mean_label,
+        )
 
     for xi, run, mass in zip(x, plot_df.index, plot_df["mass_mean_g"]):
         if pd.notna(mass) and run not in repeat_original_runs_with_data:
@@ -2365,7 +2690,12 @@ def plot_mass_measurements(
         ax.set_ylim(bottom=y_min, top=y_max)
     ax.set_xticks(tick_positions)
     ax.set_xticklabels(tick_labels, rotation=45)
-    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0)
+    ax.legend(
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+        borderaxespad=0,
+        frameon=False,
+    )
     ax.grid(axis="y", alpha=0.3)
 
     if reference_details:

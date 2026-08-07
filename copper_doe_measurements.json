@@ -1,0 +1,146 @@
+{
+  "material": "Copper",
+  "design": "13-run Definitive Screening Design",
+  "measurement_unit": "g",
+  "runs": [
+    {
+      "run": "T1",
+      "weight_g": 47.429,
+      "notes": "many blobs.",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T2",
+      "weight_g": 47.305,
+      "notes": "still many blobs which fall off. Prime tower seems to have better structure. Flat looks better",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T3",
+      "weight_g": 44.554,
+      "notes": "less material adhering to nozzle, line missing due to stop!",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T4",
+      "weight_g": 44.932,
+      "notes": "again more clumping, but not excessive",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T5",
+      "weight_g": 45.106,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T6",
+      "weight_g": 44.484,
+      "notes": "less stuff on nozzle.",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T7",
+      "weight_g": 43.286,
+      "notes": "looks surprisingly good but holes between infill and walls",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T8",
+      "weight_g": 43.294,
+      "notes": "wieder mehr an der nozzle. Viel zwischenwand und innen",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T9",
+      "weight_g": 46.487,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T10",
+      "weight_g": 45.299,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T11",
+      "weight_g": 44.964,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T12",
+      "weight_g": 46.312,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T13",
+      "weight_g": 45.186,
+      "notes": "",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    }
+  ],
+  "response_fields": {
+    "weight_g": "Measured specimen weight in grams.",
+    "density_g_cm3": "Calculated or measured density; higher is better.",
+    "porosity_percent": "Porosity percentage; lower is better.",
+    "leakage_rate": "Raw leakage-rate response if available.",
+    "log_leakage_rate": "Log-transformed leakage-rate response; lower is better.",
+    "visible_clumping_score": "Visual clumping/overextrusion score; lower is better.",
+    "notes": "Qualitative print notes."
+  }
+}

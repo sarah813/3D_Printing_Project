@@ -1,0 +1,55 @@
+{
+  "material": "Copper",
+  "design": "13-run Definitive Screening Design",
+  "fixed_settings": {
+    "line_width_mm": 0.62,
+    "wall_order": "inner/outer"
+  },
+  "factors": [
+    {
+      "factor": "A",
+      "name": "A_layer_height_mm",
+      "display_name": "Layer height",
+      "unit": "mm",
+      "low": 0.18,
+      "center": 0.20,
+      "high": 0.22
+    },
+    {
+      "factor": "B",
+      "name": "B_flow_ratio",
+      "display_name": "Flow ratio",
+      "unit": "",
+      "low": 1.18,
+      "center": 1.20,
+      "high": 1.22
+    },
+    {
+      "factor": "C",
+      "name": "C_nozzle_temp_C",
+      "display_name": "Nozzle temperature",
+      "unit": "deg C",
+      "low": 215,
+      "center": 220,
+      "high": 225
+    },
+    {
+      "factor": "D",
+      "name": "D_speed_mm_s",
+      "display_name": "Speed",
+      "unit": "mm/s",
+      "low": 60,
+      "center": 70,
+      "high": 80
+    },
+    {
+      "factor": "E",
+      "name": "E_infill_percent",
+      "display_name": "Infill",
+      "unit": "%",
+      "low": 90,
+      "center": 92.5,
+      "high": 95
+    }
+  ]
+}
