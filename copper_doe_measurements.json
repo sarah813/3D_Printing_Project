@@ -132,6 +132,36 @@
       "leakage_rate": null,
       "log_leakage_rate": null,
       "visible_clumping_score": null
+    },
+    {
+      "run": "T13.1",
+      "A_layer_height_mm": 0.2,
+      "B_flow_ratio": 1.2,
+      "C_nozzle_temp_C": 220,
+      "D_speed_mm_s": 70,
+      "E_infill_percent": 92.5,
+      "weight_g": 45.445,
+      "notes": "Extra center repeat of T13.",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
+    },
+    {
+      "run": "T13.2",
+      "A_layer_height_mm": 0.2,
+      "B_flow_ratio": 1.2,
+      "C_nozzle_temp_C": 220,
+      "D_speed_mm_s": 70,
+      "E_infill_percent": 92.5,
+      "weight_g": 45.859,
+      "notes": "Extra center repeat of T13.",
+      "density_g_cm3": null,
+      "porosity_percent": null,
+      "leakage_rate": null,
+      "log_leakage_rate": null,
+      "visible_clumping_score": null
     }
   ],
   "response_fields": {

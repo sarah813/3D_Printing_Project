@@ -1269,29 +1269,56 @@ def plot_augmented_main_effects(
         ax.set_xlabel("Real factor value")
         ax.set_ylabel(f"Predicted {response}")
         ax.set_ylim(y_min - y_padding, y_max + y_padding)
-        x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
-        x_safe = 0.10 * (x_right - x_left)
         y_safe = 0.09 * (y_top - y_bottom)
 
         ax.plot(x_values, predicted_values, marker="o", color=factor_color)
-        for x_value, predicted in zip(x_values, predicted_values):
-            label_x = min(max(x_value, x_left + x_safe), x_right - x_safe)
+        valid_points = [
+            (x_value, predicted)
+            for x_value, predicted in zip(x_values, predicted_values)
+            if not pd.isna(predicted)
+        ]
+        line_slope = valid_points[-1][1] - valid_points[0][1] if len(valid_points) > 1 else 0
+        for point_index, (x_value, predicted) in enumerate(valid_points):
+            if len(valid_points) == 1:
+                label_x_axes = 0.5
+                ha = "center"
+            elif point_index == 0:
+                label_x_axes = 0.08
+                ha = "left"
+            elif point_index == len(valid_points) - 1:
+                label_x_axes = 0.92
+                ha = "right"
+            else:
+                label_x_axes = 0.5
+                ha = "center"
+
+            if line_slope > 0:
+                preferred_above = point_index == 0
+            elif line_slope < 0:
+                preferred_above = point_index == len(valid_points) - 1
+            else:
+                preferred_above = True
+
             if predicted > y_top - 1.8 * y_safe:
                 label_y = predicted - y_safe
                 va = "top"
             elif predicted < y_bottom + 1.8 * y_safe:
                 label_y = predicted + y_safe
                 va = "bottom"
-            else:
+            elif preferred_above:
                 label_y = predicted + y_safe
                 va = "bottom"
+            else:
+                label_y = predicted - y_safe
+                va = "top"
 
             ax.text(
-                label_x,
+                label_x_axes,
                 label_y,
                 f"{predicted:.2f}",
-                ha="center",
+                transform=ax.get_yaxis_transform(),
+                ha=ha,
                 va=va,
                 fontsize=8,
                 color=factor_color,
@@ -1309,7 +1336,7 @@ def plot_augmented_main_effects(
         ax.text(
         0.5,
             -0.30,
-            f"Response range: delta = {response_range:.2f} g",
+            f"Response range: Δ = {response_range:.2f} g",
             transform=ax.transAxes,
             ha="center",
             va="top",
@@ -3003,6 +3030,125 @@ def plot_three_level_main_effects(
     axes[0].set_ylabel(response)
     fig.suptitle(experiment_title(f"Three-level main effects ({response})", experiment))
     fig.subplots_adjust(bottom=0.22, top=0.82, wspace=0.18)
+    plt.show(block=False)
+
+
+def plot_interaction_mean_matrix(
+    matrix,
+    response="mass_mean_g",
+    factor_cols=None,
+    experiment=None,
+):
+    """Plot pairwise interaction data means in a lower-triangular matrix."""
+    if factor_cols is None:
+        factor_cols = [
+            col for col in matrix.columns
+            if col not in ["Run", "run", response]
+        ]
+
+    plot_df = matrix.dropna(subset=[response]).copy()
+    factor_count = len(factor_cols)
+    if factor_count < 2:
+        raise ValueError("At least two factors are required for an interaction plot.")
+
+    response_values = plot_df[response].dropna()
+    y_min = response_values.min()
+    y_max = response_values.max()
+    y_padding = max(0.08 * (y_max - y_min), 0.05)
+    panel_count = factor_count - 1
+
+    fig, axes = plt.subplots(
+        panel_count,
+        panel_count,
+        figsize=(2.55 * panel_count, 2.15 * panel_count),
+        sharey=True,
+    )
+    if panel_count == 1:
+        axes = np.array([[axes]])
+
+    line_styles = {
+        -1: {"color": "#1f77b4", "marker": "o", "label": "line factor -"},
+        1: {"color": "#ff7f0e", "marker": "s", "label": "line factor +"},
+    }
+
+    for row_index in range(panel_count):
+        factor_line = factor_cols[row_index]
+        for col_index in range(panel_count):
+            ax = axes[row_index, col_index]
+            factor_x = factor_cols[col_index + 1]
+
+            if col_index < row_index:
+                ax.axis("off")
+                continue
+
+            for line_level, style in line_styles.items():
+                subset = plot_df[plot_df[factor_line] == line_level]
+                means = subset.groupby(factor_x)[response].mean().reindex([-1, 1])
+                if means.notna().any():
+                    ax.plot(
+                        [-1, 1],
+                        means,
+                        color=style["color"],
+                        marker=style["marker"],
+                        linewidth=1.2,
+                        markersize=4,
+                        label=style["label"],
+                    )
+
+            ax.set_xticks([-1, 1])
+            ax.set_xticklabels(["-", "+"])
+            ax.set_ylim(y_min - y_padding, y_max + y_padding)
+            ax.grid(alpha=0.25)
+            if row_index == 0:
+                ax.set_title(
+                    factor_x,
+                    fontsize=9,
+                    pad=10,
+                    color=FACTOR_COLORS.get(factor_x, "#333333"),
+                )
+            if col_index == panel_count - 1:
+                ax.text(
+                    1.08,
+                    0.5,
+                    factor_line,
+                    transform=ax.transAxes,
+                    rotation=0,
+                    ha="left",
+                    va="center",
+                    fontsize=9,
+                    color=FACTOR_COLORS.get(factor_line, "#333333"),
+                    clip_on=False,
+                )
+            if row_index == panel_count - 1:
+                ax.set_xlabel(
+                    factor_x,
+                    fontsize=9,
+                    color=FACTOR_COLORS.get(factor_x, "#333333"),
+                )
+            if col_index == row_index:
+                ax.tick_params(axis="y", labelleft=True)
+            else:
+                ax.tick_params(axis="y", labelleft=False)
+
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    if handles:
+        fig.legend(
+            handles[:2],
+            labels[:2],
+            loc="upper right",
+            bbox_to_anchor=(0.90, 0.965),
+            frameon=False,
+        )
+
+    fig.suptitle(experiment_title("Interaction plot of data means", experiment))
+    fig.subplots_adjust(
+        left=0.08,
+        right=0.91,
+        bottom=0.08,
+        top=0.88,
+        wspace=0.18,
+        hspace=0.30,
+    )
     plt.show(block=False)
 
 

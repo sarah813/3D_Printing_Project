@@ -265,31 +265,58 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
         ax.set_xlabel("Real factor value")
         ax.set_ylabel(response)
         ax.set_ylim(y_min - y_padding, y_max + y_padding)
-        x_left, x_right = ax.get_xlim()
         y_bottom, y_top = ax.get_ylim()
-        x_safe = 0.10 * (x_right - x_left)
         y_safe = 0.09 * (y_top - y_bottom)
 
         ax.plot(x_values, means, marker="o", color=factor_color)
-        for x_value, mean_value in zip(x_values, means):
+        valid_points = [
+            (x_value, mean_value)
+            for x_value, mean_value in zip(x_values, means)
+            if not pd.isna(mean_value)
+        ]
+        line_slope = valid_points[-1][1] - valid_points[0][1] if len(valid_points) > 1 else 0
+        for point_index, (x_value, mean_value) in enumerate(valid_points):
             if pd.isna(mean_value):
                 continue
-            label_x = min(max(x_value, x_left + x_safe), x_right - x_safe)
+            if len(valid_points) == 1:
+                label_x_axes = 0.5
+                ha = "center"
+            elif point_index == 0:
+                label_x_axes = 0.08
+                ha = "left"
+            elif point_index == len(valid_points) - 1:
+                label_x_axes = 0.92
+                ha = "right"
+            else:
+                label_x_axes = 0.5
+                ha = "center"
+
+            if line_slope > 0:
+                preferred_above = point_index == 0
+            elif line_slope < 0:
+                preferred_above = point_index == len(valid_points) - 1
+            else:
+                preferred_above = True
+
             if mean_value > y_top - 1.8 * y_safe:
                 label_y = mean_value - y_safe
                 va = "top"
             elif mean_value < y_bottom + 1.8 * y_safe:
                 label_y = mean_value + y_safe
                 va = "bottom"
-            else:
+            elif preferred_above:
                 label_y = mean_value + y_safe
                 va = "bottom"
+            else:
+                label_y = mean_value - y_safe
+                va = "top"
 
             ax.text(
-                label_x,
+                label_x_axes,
                 label_y,
                 f"{mean_value:.2f}",
-                ha="center",
+                transform=ax.get_yaxis_transform(),
+                ha=ha,
                 va=va,
                 fontsize=8,
                 color=factor_color,
@@ -307,7 +334,7 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
         ax.text(
             0.5,
             -0.26,
-            f"Response range: delta = {response_diff:.2f} g",
+            f"Response range: Δ = {response_diff:.2f} g",
             transform=ax.transAxes,
             ha="center",
             va="top",
