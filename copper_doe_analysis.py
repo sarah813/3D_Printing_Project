@@ -375,25 +375,59 @@ def plot_copper_curvature(model):
 
 def plot_copper_interactions(coded_with_response_df, response, interaction_pairs):
     """Plot raw means for selected physically plausible interactions."""
-    for factor_x, factor_line in interaction_pairs:
-        plot_df = coded_with_response_df.dropna(subset=[response]).copy()
-        if plot_df.empty:
-            continue
+    plot_df = coded_with_response_df.dropna(subset=[response]).copy()
+    if plot_df.empty:
+        print(f"No measured {response} values are available for interaction plots.")
+        return
 
-        fig, ax = plt.subplots(figsize=(5.5, 4))
+    valid_pairs = [
+        (factor_x, factor_line)
+        for factor_x, factor_line in interaction_pairs
+        if factor_x in plot_df.columns and factor_line in plot_df.columns
+    ]
+    if not valid_pairs:
+        print("No valid interaction pairs are available for the current data.")
+        return
+
+    n_pairs = len(valid_pairs)
+    fig, axes = plt.subplots(
+        1,
+        n_pairs,
+        figsize=(4.2 * n_pairs, 5.4),
+        sharey=True,
+    )
+    if n_pairs == 1:
+        axes = [axes]
+
+    for ax, (factor_x, factor_line) in zip(axes, valid_pairs):
         for line_level in [-1, 0, 1]:
             subset = plot_df[plot_df[factor_line] == line_level]
             means = subset.groupby(factor_x)[response].mean().reindex([-1, 0, 1])
             if means.notna().any():
-                ax.plot([-1, 0, 1], means, marker="o", label=f"{factor_line}={line_level}")
+                ax.plot([-1, 0, 1], means, marker="o", label=f"{factor_line}: {line_level}")
 
         ax.set_xlabel(f"{factor_x} coded level")
-        ax.set_ylabel(response)
         ax.set_title(f"{factor_x} x {factor_line}")
-        ax.legend(frameon=False)
+        ax.set_xticks([-1, 0, 1])
         ax.grid(alpha=0.25)
-        plt.tight_layout()
-        plt.show(block=False)
+        ax.legend(
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.30),
+            frameon=False,
+            fontsize=10,
+            ncol=1,
+        )
+
+    axes[0].set_ylabel(response)
+    fig.suptitle(f"Copper DSD - Selected interaction plots ({response})")
+    fig.subplots_adjust(
+        left=0.055,
+        right=0.99,
+        bottom=0.32,
+        top=0.86,
+        wspace=0.25,
+    )
+    plt.show(block=False)
 
 
 def plot_copper_actual_vs_predicted(model):
@@ -471,15 +505,18 @@ def plot_copper_contours(model, levels, factor_pairs, fixed_level=0):
     if not factor_pairs:
         return
 
+    max_cols = 3
+    n_cols = min(max_cols, len(factor_pairs))
+    n_rows = int(np.ceil(len(factor_pairs) / n_cols))
     fig, axes = plt.subplots(
-        1,
-        len(factor_pairs),
-        figsize=(5.4 * len(factor_pairs), 4.9),
+        n_rows,
+        n_cols,
+        figsize=(5.4 * n_cols, 4.9 * n_rows),
         squeeze=False,
     )
-    axes = axes[0]
+    axes_flat = axes.ravel()
 
-    for ax, (factor_x, factor_y) in zip(axes, factor_pairs):
+    for ax, (factor_x, factor_y) in zip(axes_flat, factor_pairs):
         xx, yy = np.meshgrid(grid, grid)
         coded_grid = pd.DataFrame({factor: fixed_level for factor in factor_names},
                                   index=np.arange(xx.size))
@@ -503,16 +540,20 @@ def plot_copper_contours(model, levels, factor_pairs, fixed_level=0):
         ax.set_xlabel(factor_x)
         ax.set_ylabel(factor_y)
         ax.set_title(
-            f"Copper DSD contour:\n{factor_x} vs {factor_y}",
+            f"{factor_x} vs {factor_y}",
             pad=14,
         )
+
+    for ax in axes_flat[len(factor_pairs):]:
+        ax.set_visible(False)
 
     fig.subplots_adjust(
         left=0.055,
         right=0.985,
-        bottom=0.13,
-        top=0.82,
+        bottom=0.08,
+        top=0.91,
         wspace=0.34,
+        hspace=0.38,
     )
     plt.show(block=False)
 
