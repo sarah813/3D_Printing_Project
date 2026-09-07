@@ -170,6 +170,23 @@ def mass_measurements_from_runs(runs):
     }
 
 
+def response_measurements_from_runs(runs, response_key):
+    """Build a column-wise measurement dictionary for repeated numeric responses."""
+    def values_for_run(run):
+        return list(run.get("measurements", {}).get(response_key, []))
+
+    max_measurements = max((len(values_for_run(run)) for run in runs), default=0)
+    return {
+        f"{response_key}_{measurement_no}": [
+            values_for_run(run)[measurement_no - 1]
+            if len(values_for_run(run)) >= measurement_no
+            else None
+            for run in runs
+        ]
+        for measurement_no in range(1, max_measurements + 1)
+    }
+
+
 def repeat_mass_measurements_from_runs(runs):
     """Build the run-label keyed repeat measurement dictionary."""
     max_measurements = max((len(run.get("mass_g", [])) for run in runs), default=0)

@@ -111,6 +111,18 @@ def fit_copper_response_model(coded_with_response_df, response, terms):
     coefficient_df["standardized_effect"] = (
         coefficient_df["coefficient"] / coefficient_df["standard_error"]
     )
+    coefficient_df["t_value"] = coefficient_df["standardized_effect"]
+    coefficient_df["F_value"] = coefficient_df["t_value"] ** 2
+    try:
+        from scipy import stats
+
+        coefficient_df["p_value"] = (
+            2 * stats.t.sf(coefficient_df["t_value"].abs(), df=residual_df)
+            if residual_df > 0
+            else np.nan
+        )
+    except Exception:
+        coefficient_df["p_value"] = np.nan
     coefficient_df["absolute_standardized_effect"] = (
         coefficient_df["standardized_effect"].abs()
     )
@@ -136,7 +148,95 @@ def fit_copper_response_model(coded_with_response_df, response, terms):
     }
 
 
-def plot_copper_pareto(model, title=None):
+def build_copper_term_significance_table(model, include_intercept=False):
+    """Return term-wise coefficient significance statistics for a copper model."""
+    term_df = model["coefficient_df"].copy()
+    if not include_intercept:
+        term_df = term_df[term_df["term"] != "Intercept"]
+    return term_df.reindex(columns=[
+        "term",
+        "coefficient",
+        "standard_error",
+        "t_value",
+        "F_value",
+        "p_value",
+    ])
+
+
+def build_copper_anova_table(model):
+    """Build an overall ANOVA table for a fitted copper regression model."""
+    response = model["response"]
+    fitted_df = model["fitted_df"]
+    observed = fitted_df[response].to_numpy(dtype=float)
+    residual = fitted_df["residual"].to_numpy(dtype=float)
+
+    total_ss = float(np.sum((observed - observed.mean()) ** 2))
+    residual_ss = float(np.sum(residual**2))
+    model_ss = total_ss - residual_ss
+
+    model_df = int(model["rank"]) - 1
+    residual_df = int(model["residual_df"])
+    total_df = len(fitted_df) - 1
+
+    model_ms = model_ss / model_df if model_df > 0 else np.nan
+    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
+    f_value = (
+        model_ms / residual_ms
+        if residual_ms and not np.isnan(residual_ms)
+        else np.nan
+    )
+    try:
+        from scipy import stats
+
+        p_value = (
+            stats.f.sf(f_value, model_df, residual_df)
+            if pd.notna(f_value) and residual_df > 0
+            else np.nan
+        )
+    except Exception:
+        p_value = np.nan
+
+    return pd.DataFrame({
+        "source": ["Model", "Residual", "Total"],
+        "df": [model_df, residual_df, total_df],
+        "sum_sq": [model_ss, residual_ss, total_ss],
+        "mean_sq": [model_ms, residual_ms, np.nan],
+        "F_value": [f_value, np.nan, np.nan],
+        "p_value": [p_value, np.nan, np.nan],
+    })
+
+
+def plot_copper_anova(anova_table, response="weight_g", title=None):
+    """Plot explained and residual sum of squares for a copper model."""
+    plot_df = anova_table[anova_table["source"].isin(["Model", "Residual"])].copy()
+    if plot_df.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(6.4, 3.8))
+    ax.bar(
+        plot_df["source"],
+        plot_df["sum_sq"],
+        color=["#4c78a8" if source == "Model" else "#bbbbbb" for source in plot_df["source"]],
+    )
+    for _, row in plot_df.iterrows():
+        ax.text(
+            row["source"],
+            row["sum_sq"],
+            f"{row['sum_sq']:.3g}",
+            ha="center",
+            va="bottom",
+            fontsize=9,
+        )
+
+    y_label = "Sum of squares (g^2)" if response in {"weight_g", "mass_g"} else "Sum of squares"
+    ax.set_ylabel(y_label)
+    ax.set_title(title or f"Copper DSD - ANOVA ({response})")
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_copper_pareto(model, title=None, alpha=0.1):
     """Pareto chart of standardized effects, falling back to coefficients."""
     effect_df = model["coefficient_df"].query("term != 'Intercept'").copy()
     use_standardized = effect_df["absolute_standardized_effect"].notna().any()
@@ -159,6 +259,20 @@ def plot_copper_pareto(model, title=None):
     ax.set_xlabel(x_label)
     ax.set_title(title or f"Copper DSD - Pareto chart ({model['response']})")
     ax.grid(axis="x", alpha=0.25)
+    if use_standardized and model["residual_df"] > 0:
+        try:
+            from scipy import stats
+
+            critical_value = stats.t.ppf(1 - alpha / 2, df=model["residual_df"])
+            ax.axvline(
+                critical_value,
+                color="#d55e00",
+                linewidth=1.5,
+                label=f"alpha={alpha:g} threshold",
+            )
+            ax.legend(loc="lower right", frameon=False)
+        except Exception:
+            pass
     plt.tight_layout()
     plt.show(block=False)
 
@@ -427,6 +541,451 @@ def plot_copper_interactions(coded_with_response_df, response, interaction_pairs
         top=0.86,
         wspace=0.25,
     )
+    plt.show(block=False)
+
+
+def build_copper_paired_measurement_table(
+    measurement_table,
+    measurement_repeats_col="weight_measurements_g",
+    exclude_runs=None,
+):
+    """Return one row per specimen having at least two weight measurements."""
+    excluded = {str(run) for run in (exclude_runs or [])}
+    paired_rows = []
+    for _, row in measurement_table.iterrows():
+        if str(row["Run"]) in excluded:
+            continue
+        values = row.get(measurement_repeats_col)
+        if not isinstance(values, (list, tuple, np.ndarray, pd.Series)):
+            continue
+        numeric_values = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+        if len(numeric_values) < 2:
+            continue
+        measurement_1 = float(numeric_values.iloc[0])
+        measurement_2 = float(numeric_values.iloc[1])
+        paired_rows.append(
+            {
+                "Run": row["Run"],
+                "measurement_1_g": measurement_1,
+                "measurement_2_g": measurement_2,
+                "offset_2_minus_1_g": measurement_2 - measurement_1,
+            }
+        )
+    return pd.DataFrame(paired_rows)
+
+
+def plot_copper_measurement_correlation(
+    measurement_table,
+    measurement_repeats_col="weight_measurements_g",
+    exclude_runs=None,
+    value_digits=3,
+):
+    """Plot agreement and offsets between the first two copper weighings."""
+    paired = build_copper_paired_measurement_table(
+        measurement_table,
+        measurement_repeats_col=measurement_repeats_col,
+        exclude_runs=exclude_runs,
+    )
+    if len(paired) < 2:
+        raise ValueError("At least two specimens with paired measurements are required.")
+
+    measurement_1 = paired["measurement_1_g"].to_numpy(dtype=float)
+    measurement_2 = paired["measurement_2_g"].to_numpy(dtype=float)
+    offsets = paired["offset_2_minus_1_g"].to_numpy(dtype=float)
+    mean_offset = offsets.mean()
+    offset_std = offsets.std(ddof=1)
+    correlation = np.corrcoef(measurement_1, measurement_2)[0, 1]
+    slope, intercept = np.polyfit(measurement_1, measurement_2, 1)
+
+    fig, (ax_corr, ax_offset) = plt.subplots(
+        1,
+        2,
+        figsize=(13, 4.8),
+        gridspec_kw={"width_ratios": [1, 1.35]},
+    )
+
+    low = min(measurement_1.min(), measurement_2.min()) - 0.4
+    high = max(measurement_1.max(), measurement_2.max()) + 0.4
+    fit_x = np.array([low, high])
+    ax_corr.scatter(measurement_1, measurement_2, color="#2171b5", s=45, zorder=3)
+    for run, x_value, y_value in zip(paired["Run"], measurement_1, measurement_2):
+        ax_corr.annotate(
+            run,
+            (x_value, y_value),
+            xytext=(4, 4),
+            textcoords="offset points",
+            fontsize=8,
+        )
+    ax_corr.plot(fit_x, fit_x, color="#777777", linestyle="--", label="no offset: y = x")
+    ax_corr.plot(
+        fit_x,
+        fit_x + mean_offset,
+        color="#31a354",
+        linestyle=":",
+        linewidth=2,
+        label=f"mean offset: +{mean_offset:.{value_digits}f} g",
+    )
+    ax_corr.plot(
+        fit_x,
+        slope * fit_x + intercept,
+        color="#cb181d",
+        linewidth=1.8,
+        label="linear fit",
+    )
+    ax_corr.set_xlim(low, high)
+    ax_corr.set_ylim(low, high)
+    ax_corr.set_aspect("equal", adjustable="box")
+    ax_corr.set_xlabel("Measurement 1 (g)")
+    ax_corr.set_ylabel("Measurement 2 (g)")
+    ax_corr.set_title("Measurement 1 vs measurement 2")
+    ax_corr.text(
+        0.04,
+        0.96,
+        f"Pearson r = {correlation:.3f}\n$R^2$ = {correlation ** 2:.3f}",
+        transform=ax_corr.transAxes,
+        ha="left",
+        va="top",
+        bbox={"facecolor": "white", "edgecolor": "#bbbbbb", "alpha": 0.9},
+    )
+    ax_corr.grid(alpha=0.25)
+    ax_corr.legend(frameon=False, fontsize=8, loc="lower right")
+
+    run_x = np.arange(len(paired), dtype=float)
+    ax_offset.plot(run_x, offsets, color="#756bb1", marker="o", linewidth=1.6)
+    ax_offset.axhline(
+        mean_offset,
+        color="#31a354",
+        linestyle="--",
+        linewidth=1.8,
+        label=f"mean = {mean_offset:.{value_digits}f} g",
+    )
+    ax_offset.fill_between(
+        [-0.5, len(paired) - 0.5],
+        mean_offset - offset_std,
+        mean_offset + offset_std,
+        color="#31a354",
+        alpha=0.12,
+        label=f"mean ± 1 SD ({offset_std:.{value_digits}f} g)",
+    )
+    ax_offset.set_xticks(run_x)
+    ax_offset.set_xticklabels(paired["Run"], rotation=45, ha="right")
+    ax_offset.set_ylabel("Measurement 2 − measurement 1 (g)")
+    ax_offset.set_title("Offset consistency by specimen")
+    ax_offset.grid(axis="y", alpha=0.25)
+    ax_offset.legend(frameon=False, fontsize=8)
+
+    fig.suptitle("Copper repeated-weight measurements")
+    plt.tight_layout()
+    plt.show(block=False)
+    return paired
+
+
+def plot_copper_weight_measurements(
+    measurement_table,
+    response="weight_g",
+    measurement_repeats_col="weight_measurements_g",
+    measurement_1_offset_g=None,
+    offset_excluded_runs=None,
+    base_runs=None,
+    repeat_runs=None,
+    extra_runs=None,
+    y_min=None,
+    y_max=None,
+    value_digits=2,
+    reference_weight_g=None,
+    reference_label="m_geom",
+    show_weight_line=True,
+):
+    """Plot individual weighings, print repeats, and the mean for each copper run."""
+    df = measurement_table.copy()
+    df[response] = pd.to_numeric(df[response], errors="coerce")
+    df = df.dropna(subset=[response])
+
+    if base_runs is None:
+        base_runs = [f"T{i}" for i in range(1, 14)]
+    if repeat_runs is None:
+        repeat_runs = [run for run in df["Run"] if "." in str(run)]
+    if extra_runs is None:
+        extra_runs = [
+            run
+            for run in df["Run"]
+            if str(run).startswith("T")
+            and "." not in str(run)
+            and str(run) not in base_runs
+        ]
+
+    base_df = (
+        df[df["Run"].isin(base_runs)]
+        .set_index("Run")
+        .reindex(base_runs)
+        .reset_index()
+        .dropna(subset=[response])
+    )
+    repeat_df = df[df["Run"].isin(repeat_runs)].copy()
+    extra_df = (
+        df[df["Run"].isin(extra_runs)]
+        .set_index("Run")
+        .reindex(extra_runs)
+        .reset_index()
+        .dropna(subset=[response])
+    )
+
+    x = np.arange(len(base_df), dtype=float)
+    bar_width = 0.22
+    tick_positions = x.tolist()
+    tick_labels = base_df["Run"].tolist()
+    extra_x = np.arange(
+        len(base_df) + 1,
+        len(base_df) + 1 + len(extra_df),
+        dtype=float,
+    )
+    original_run_positions = {
+        **{run: position for position, run in enumerate(base_df["Run"])},
+        **dict(zip(extra_df["Run"], extra_x)),
+    }
+    original_measurements = pd.concat(
+        [base_df[["Run", response]], extra_df[["Run", response]]],
+        ignore_index=True,
+    )
+
+    original_plot_df = pd.concat(
+        [
+            base_df.assign(_plot_x=x),
+            extra_df.assign(_plot_x=extra_x),
+        ],
+        ignore_index=True,
+    )
+
+    def _measurement_values(row):
+        values = row.get(measurement_repeats_col)
+        if isinstance(values, (list, tuple, np.ndarray, pd.Series)):
+            numeric_values = pd.to_numeric(pd.Series(values), errors="coerce").dropna()
+        elif pd.isna(values):
+            numeric_values = pd.Series(dtype=float)
+        else:
+            numeric_values = pd.to_numeric(pd.Series([values]), errors="coerce").dropna()
+        if numeric_values.empty:
+            return [float(row[response])]
+        return numeric_values.astype(float).tolist()
+
+    original_plot_df["_measurements"] = original_plot_df.apply(
+        _measurement_values,
+        axis=1,
+    )
+    offset_excluded = {str(run) for run in (offset_excluded_runs or [])}
+    applied_offset = (
+        float(measurement_1_offset_g)
+        if measurement_1_offset_g is not None and pd.notna(measurement_1_offset_g)
+        else 0.0
+    )
+
+    def _corrected_average(row):
+        values = list(row["_measurements"])
+        if (
+            applied_offset
+            and len(values) >= 2
+            and str(row["Run"]) not in offset_excluded
+        ):
+            values[0] += applied_offset
+        return float(np.mean(values))
+
+    original_plot_df["_plot_average"] = original_plot_df.apply(
+        _corrected_average,
+        axis=1,
+    )
+    max_measurements = max(original_plot_df["_measurements"].map(len), default=1)
+
+    fig, ax = plt.subplots(figsize=(16, 4.3))
+    if reference_weight_g is not None and pd.notna(reference_weight_g):
+        ax.axhline(
+            reference_weight_g,
+            color="#888888",
+            linestyle="-",
+            linewidth=1.4,
+            alpha=0.55,
+            zorder=0,
+            label=reference_label,
+        )
+        ax.annotate(
+            f"{reference_label} = {reference_weight_g:.{value_digits}f} g",
+            xy=(0.01, reference_weight_g),
+            xycoords=("axes fraction", "data"),
+            xytext=(0, 5),
+            textcoords="offset points",
+            ha="left",
+            va="bottom",
+            fontsize=9,
+            color="#555555",
+        )
+
+    measurement_colors = ["#9ecae1", "#6baed6", "#3182bd", "#08519c"]
+    measurement_offsets = (
+        np.arange(max_measurements, dtype=float) - (max_measurements - 1) / 2
+    ) * bar_width
+    for measurement_index in range(max_measurements):
+        measurement_rows = original_plot_df[
+            original_plot_df["_measurements"].map(len) > measurement_index
+        ]
+        measurement_x = (
+            measurement_rows["_plot_x"].to_numpy(dtype=float)
+            + measurement_offsets[measurement_index]
+        )
+        measurement_y = measurement_rows["_measurements"].map(
+            lambda values: values[measurement_index]
+        )
+        color = measurement_colors[min(measurement_index, len(measurement_colors) - 1)]
+        ax.bar(
+            measurement_x,
+            measurement_y,
+            width=bar_width * 0.88,
+            color=color,
+            label=f"measurement {measurement_index + 1}",
+            alpha=0.9,
+        )
+        for xi, mass in zip(measurement_x, measurement_y):
+            ax.annotate(
+                f"{mass:.{value_digits}f}",
+                xy=(xi, mass),
+                xytext=(0, 5),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=7,
+                color="#333333",
+            )
+
+        if measurement_index == 0 and applied_offset:
+            correction_rows = measurement_rows[
+                (measurement_rows["_measurements"].map(len) >= 2)
+                & (~measurement_rows["Run"].astype(str).isin(offset_excluded))
+            ]
+            correction_x = (
+                correction_rows["_plot_x"].to_numpy(dtype=float)
+                + measurement_offsets[measurement_index]
+            )
+            correction_bottom = correction_rows["_measurements"].map(
+                lambda values: values[measurement_index]
+            ).to_numpy(dtype=float)
+            ax.bar(
+                correction_x,
+                np.full(len(correction_rows), applied_offset),
+                bottom=correction_bottom,
+                width=bar_width * 0.88,
+                color="#fdae6b",
+                edgecolor="#e6550d",
+                hatch="///",
+                alpha=0.75,
+                label=f"M1 offset added (+{applied_offset:.{value_digits}f} g)",
+            )
+            for xi, bottom in zip(correction_x, correction_bottom):
+                ax.annotate(
+                    f"+{applied_offset:.{value_digits}f}",
+                    xy=(xi, bottom + applied_offset / 2),
+                    ha="center",
+                    va="center",
+                    fontsize=6.5,
+                    color="#7f2704",
+                    rotation=90,
+                )
+
+    if show_weight_line:
+        ax.plot(
+            original_plot_df["_plot_x"],
+            original_plot_df["_plot_average"],
+            color="#000000",
+            marker="o",
+            linewidth=2,
+            markersize=5,
+            label=(
+                "offset-corrected average"
+                if applied_offset
+                else "average measurement"
+            ),
+            zorder=4,
+        )
+
+    repeat_summary_lines = []
+    if not repeat_df.empty:
+        repeat_df["original_run"] = repeat_df["Run"].astype(str).str.split(".").str[0]
+        repeat_df["x"] = repeat_df["original_run"].map(original_run_positions)
+        repeat_df = repeat_df.dropna(subset=["x", response])
+        if not repeat_df.empty:
+            repeat_df["_repeat_index"] = repeat_df.groupby("original_run").cumcount()
+            repeat_x = (
+                repeat_df["x"].to_numpy(dtype=float)
+                + bar_width * (1.6 + repeat_df["_repeat_index"].to_numpy(dtype=float))
+            )
+            ax.bar(
+                repeat_x,
+                repeat_df[response],
+                width=bar_width,
+                color="#31a354",
+                label="repeat",
+                alpha=0.85,
+            )
+            for xi, mass in zip(repeat_x, repeat_df[response]):
+                ax.annotate(
+                    f"{mass:.{value_digits}f}",
+                    xy=(xi, mass),
+                    xytext=(0, 8),
+                    textcoords="offset points",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                )
+
+            repeat_summary_df = (
+                repeat_df.groupby("original_run", as_index=False)
+                .agg({response: "mean"})
+            )
+            comparison_df = repeat_summary_df.merge(
+                original_measurements,
+                left_on="original_run",
+                right_on="Run",
+                suffixes=("_repeat", "_original"),
+            )
+            if not comparison_df.empty:
+                abs_diff = (
+                    comparison_df[f"{response}_repeat"]
+                    - comparison_df[f"{response}_original"]
+                ).abs()
+                repeat_summary_lines.append(
+                    "Repeatability: "
+                    f"mean abs diff {abs_diff.mean():.3f} g; "
+                    f"max {abs_diff.max():.3f} g"
+                )
+
+    if not extra_df.empty:
+        tick_positions.extend(extra_x.tolist())
+        tick_labels.extend(extra_df["Run"].tolist())
+
+    if repeat_summary_lines:
+        ax.text(
+            0.99,
+            0.04,
+            "\n".join(repeat_summary_lines),
+            transform=ax.transAxes,
+            ha="right",
+            va="bottom",
+            fontsize=9,
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "facecolor": "white",
+                "edgecolor": "#31a354",
+                "alpha": 0.85,
+            },
+        )
+
+    ax.set_xlabel("Test plate")
+    ax.set_ylabel("Weight (g)")
+    ax.set_title("Copper DSD - Weight measurements")
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45)
+    if y_min is not None or y_max is not None:
+        ax.set_ylim(bottom=y_min, top=y_max)
+    ax.grid(axis="y", alpha=0.3)
+    ax.legend(loc="upper left", bbox_to_anchor=(1.01, 1), frameon=False)
+    plt.tight_layout()
     plt.show(block=False)
 
 

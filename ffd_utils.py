@@ -1,6 +1,7 @@
 """Reusable FFD calculations and plots."""
 
 import itertools
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -321,6 +322,41 @@ def build_mass_measurements(
     return mass_measurements_g, mass_columns
 
 
+def build_response_measurements(
+    measurements,
+    run_prefix="RR",
+    run_labels=None,
+    response_name="response",
+    mean_round_digits=3,
+):
+    """Build a mean/std table from repeated numeric response measurements."""
+    response_columns = list(measurements.keys())
+    if not response_columns:
+        return pd.DataFrame({"run": run_labels or []}), []
+
+    row_count = max(len(values) for values in measurements.values())
+    if run_labels is None:
+        run_labels = [f"{run_prefix}{i}" for i in range(1, row_count + 1)]
+    elif len(run_labels) != row_count:
+        raise ValueError("run_labels must have the same length as measurements.")
+
+    response_measurements = pd.DataFrame({
+        "run": run_labels,
+        **measurements,
+    })
+    response_measurements[response_columns] = response_measurements[
+        response_columns
+    ].apply(pd.to_numeric, errors="coerce")
+    response_measurements[f"{response_name}_mean"] = response_measurements[
+        response_columns
+    ].mean(axis=1).round(mean_round_digits)
+    response_measurements[f"{response_name}_std"] = response_measurements[
+        response_columns
+    ].std(axis=1).round(mean_round_digits)
+
+    return response_measurements, response_columns
+
+
 def build_repeat_mass_measurements(repeat_measurements_g, mean_round_digits=1):
     """Build repeat-run mass table and calculate the repeat mean mass."""
     mass_columns = list(repeat_measurements_g.keys())
@@ -371,10 +407,20 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
     )
     repeat_df["original_run"] = repeat_df["run"].str.split(".").str[0]
     repeat_df = (
-        repeat_df.groupby("original_run", as_index=False)["repeat_mass_mean_g"]
-        .mean()
+        repeat_df.groupby("original_run", as_index=False)
+        .agg(
+            repeat_mass_mean_g=("repeat_mass_mean_g", "mean"),
+            repeat_print_count=("repeat_mass_mean_g", "count"),
+        )
     )
-    repeat_df["run_repeat"] = repeat_df["original_run"] + " repeat mean"
+    repeat_df["run_repeat"] = repeat_df.apply(
+        lambda row: (
+            f"{row['original_run']} repeat print"
+            if row["repeat_print_count"] == 1
+            else f"{row['original_run']} repeat print average"
+        ),
+        axis=1,
+    )
 
     repeatability_df = repeat_df.merge(
         original_df,
@@ -398,6 +444,7 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
         "original_run",
         "original_mass_mean_g",
         "repeat_mass_mean_g",
+        "repeat_print_count",
         "difference_g",
         "abs_difference_g",
         "difference_percent",
@@ -408,6 +455,236 @@ def calculate_repeatability(original_measurements_g, repeat_measurements_g):
         "abs_difference_g": 3,
         "difference_percent": 2,
     })
+
+
+def calculate_pure_error_from_replicates(
+    result_matrix,
+    response="mass_mean_g",
+    factor_cols=None,
+    repeat_measurements_g=None,
+    repeat_response=None,
+):
+    """Estimate pure experimental error from repeated prints/settings.
+
+    Each original print contributes one response value. Repeated mass columns
+    of the same specimen are not treated as independent prints; they should
+    already be collapsed into the representative response, for example
+    ``mass_mean_g``. Optional repeat measurements are actual repeated prints
+    named like ``R2.2`` and are assigned to the coded setting of ``R2``.
+    """
+    if factor_cols is None:
+        factor_cols = [
+            col for col in result_matrix.columns
+            if col not in ["Run", "run", response]
+        ]
+
+    run_col = "run" if "run" in result_matrix.columns else "Run"
+    base_df = result_matrix.copy()
+    if run_col not in base_df.columns:
+        base_df = base_df.reset_index().rename(columns={"index": run_col})
+    base_df[run_col] = base_df[run_col].astype(str)
+
+    rows = []
+    for _, row in base_df.dropna(subset=[response]).iterrows():
+        coded_setting = tuple(row[factor] for factor in factor_cols)
+        rows.append({
+            "source_run": row[run_col],
+            "replicate_group": "|".join(f"{factor}={row[factor]}" for factor in factor_cols),
+            "coded_setting": coded_setting,
+            response: row[response],
+            "source": "original print",
+        })
+
+    def run_aliases(run_value):
+        """Return equivalent run labels such as 2, R2, RR2, I2, B2."""
+        run_text = str(run_value)
+        aliases = {run_text}
+        match = re.fullmatch(r"([A-Za-z]+)?(\d+)(?:\.0)?", run_text)
+        if match:
+            run_number = match.group(2)
+            aliases.add(run_number)
+            aliases.update(f"{prefix}{run_number}" for prefix in ["R", "RR", "I", "B", "O", "T"])
+        return aliases
+
+    if repeat_measurements_g is not None and not repeat_measurements_g.empty:
+        repeat_df = repeat_measurements_g.copy()
+        repeat_response = repeat_response or (
+            response if response in repeat_df.columns else "mass_mean_g"
+        )
+        if repeat_response not in repeat_df.columns:
+            mass_columns = [
+                col for col in repeat_df.columns
+                if col.startswith("mass_") and col.endswith("_g")
+            ]
+            repeat_df["mass_mean_g"] = repeat_df[mass_columns].apply(
+                calculate_mean_mass_from_measurements,
+                axis=1,
+            )
+            repeat_response = "mass_mean_g"
+        repeat_df = repeat_df.dropna(subset=["run", repeat_response]).copy()
+        repeat_df["original_run"] = repeat_df["run"].astype(str).str.split(".").str[0]
+        original_settings = {}
+        for _, original_row in base_df.iterrows():
+            setting = original_row[factor_cols]
+            for alias in run_aliases(original_row[run_col]):
+                original_settings[alias] = setting
+
+        for _, repeat_row in repeat_df.iterrows():
+            original_run = str(repeat_row["original_run"])
+            if original_run not in original_settings:
+                continue
+            setting = original_settings[original_run]
+            coded_setting = tuple(setting[factor] for factor in factor_cols)
+            rows.append({
+                "source_run": repeat_row["run"],
+                "replicate_group": "|".join(
+                    f"{factor}={setting[factor]}" for factor in factor_cols
+                ),
+                "coded_setting": coded_setting,
+                response: repeat_row[repeat_response],
+                "source": "repeat print",
+            })
+
+    replicate_df = pd.DataFrame(rows)
+    if replicate_df.empty:
+        empty_groups = pd.DataFrame(columns=[
+            "replicate_group",
+            "n_group",
+            "group_mean",
+            "SS_pure_group",
+            "df_pure_group",
+        ])
+        empty_summary = pd.DataFrame([{
+            "replicate_groups": 0,
+            "replicated_observations": 0,
+            "SS_pure": np.nan,
+            "df_pure": 0,
+            "MSE_pure": np.nan,
+            "s_pure": np.nan,
+        }])
+        return replicate_df, empty_groups, empty_summary
+
+    replicate_df["group_mean"] = replicate_df.groupby("replicate_group")[response].transform("mean")
+    replicate_df["within_group_deviation"] = replicate_df[response] - replicate_df["group_mean"]
+    replicate_df["within_group_deviation_sq"] = replicate_df["within_group_deviation"] ** 2
+    group_df = (
+        replicate_df
+        .groupby("replicate_group", as_index=False)
+        .agg(
+            n_group=(response, "count"),
+            group_mean=("group_mean", "first"),
+            SS_pure_group=("within_group_deviation_sq", "sum"),
+        )
+    )
+    group_df = group_df[group_df["n_group"] > 1].copy()
+    group_df["df_pure_group"] = group_df["n_group"] - 1
+
+    df_pure = int(group_df["df_pure_group"].sum()) if not group_df.empty else 0
+    ss_pure = float(group_df["SS_pure_group"].sum()) if not group_df.empty else np.nan
+    mse_pure = ss_pure / df_pure if df_pure > 0 else np.nan
+    s_pure = np.sqrt(mse_pure) if pd.notna(mse_pure) else np.nan
+
+    summary_df = pd.DataFrame([{
+        "replicate_groups": len(group_df),
+        "replicated_observations": int(group_df["n_group"].sum()) if not group_df.empty else 0,
+        "SS_pure": ss_pure,
+        "df_pure": df_pure,
+        "MSE_pure": mse_pure,
+        "s_pure": s_pure,
+    }])
+
+    return replicate_df, group_df, summary_df
+
+
+def calculate_measurement_error_from_repeated_columns(
+    response_measurements,
+    response_columns,
+    response_name,
+):
+    """Estimate measurement repeatability from repeated readings per specimen.
+
+    This is not print-to-print pure error. It uses repeated measurements of the
+    same specimen, for example hydrostatic volume readings, to estimate how
+    much scatter comes from the measurement procedure itself.
+    """
+    rows = []
+    for _, row in response_measurements.iterrows():
+        values = pd.to_numeric(row[response_columns], errors="coerce").dropna()
+        if values.empty:
+            continue
+        group_mean = values.mean()
+        for column, value in values.items():
+            rows.append({
+                "run": row["run"],
+                "measurement": column,
+                response_name: value,
+                "group_mean": group_mean,
+                "within_group_deviation": value - group_mean,
+                "within_group_deviation_sq": (value - group_mean) ** 2,
+            })
+
+    measurement_df = pd.DataFrame(rows)
+    if measurement_df.empty:
+        empty_groups = pd.DataFrame(columns=[
+            "run",
+            "n_group",
+            "group_mean",
+            "SS_measurement_group",
+            "df_measurement_group",
+        ])
+        empty_summary = pd.DataFrame([{
+            "measurement_groups": 0,
+            "measurement_observations": 0,
+            "SS_measurement": np.nan,
+            "df_measurement": 0,
+            "MSE_measurement": np.nan,
+            "s_measurement": np.nan,
+        }])
+        return measurement_df, empty_groups, empty_summary
+
+    group_df = (
+        measurement_df
+        .groupby("run", as_index=False)
+        .agg(
+            n_group=(response_name, "count"),
+            group_mean=("group_mean", "first"),
+            SS_measurement_group=("within_group_deviation_sq", "sum"),
+        )
+    )
+    group_df = group_df[group_df["n_group"] > 1].copy()
+    group_df["df_measurement_group"] = group_df["n_group"] - 1
+
+    df_measurement = (
+        int(group_df["df_measurement_group"].sum())
+        if not group_df.empty
+        else 0
+    )
+    ss_measurement = (
+        float(group_df["SS_measurement_group"].sum())
+        if not group_df.empty
+        else np.nan
+    )
+    mse_measurement = (
+        ss_measurement / df_measurement
+        if df_measurement > 0
+        else np.nan
+    )
+    s_measurement = (
+        np.sqrt(mse_measurement)
+        if pd.notna(mse_measurement)
+        else np.nan
+    )
+
+    summary_df = pd.DataFrame([{
+        "measurement_groups": len(group_df),
+        "measurement_observations": int(group_df["n_group"].sum()) if not group_df.empty else 0,
+        "SS_measurement": ss_measurement,
+        "df_measurement": df_measurement,
+        "MSE_measurement": mse_measurement,
+        "s_measurement": s_measurement,
+    }])
+
+    return measurement_df, group_df, summary_df
 
 
 def calculate_center_point_repeatability(
@@ -1009,6 +1286,7 @@ def fit_main_effect_screening_model(matrix, response="mass_mean_g", factor_cols=
         statistics_df["t_value"] = (
             statistics_df["coefficient"] / statistics_df["standard_error"]
         )
+        statistics_df["F_value"] = statistics_df["t_value"] ** 2
         try:
             from scipy import stats
 
@@ -1021,6 +1299,7 @@ def fit_main_effect_screening_model(matrix, response="mass_mean_g", factor_cols=
     else:
         statistics_df["standard_error"] = np.nan
         statistics_df["t_value"] = np.nan
+        statistics_df["F_value"] = np.nan
         statistics_df["p_value"] = np.nan
 
     fitted_df = analysis_df.copy()
@@ -1046,6 +1325,135 @@ def fit_main_effect_screening_model(matrix, response="mass_mean_g", factor_cols=
         "info_df": info_df,
         "singular_values": singular_values,
     }
+
+
+def _design_matrix_from_model(model):
+    """Rebuild the fitted design matrix used by a supported model object."""
+    fitted_df = model["fitted_df"]
+    coefficient_terms = list(model["coefficients"].index)
+    has_quadratic_terms = any(
+        term.endswith("^2") or ":" in term
+        for term in coefficient_terms
+    )
+    if has_quadratic_terms and "factor_cols" in model:
+        return build_quadratic_model_matrix(fitted_df, model["factor_cols"])
+    if "factor_cols" in model:
+        design_matrix = pd.DataFrame(
+            {"Intercept": np.ones(len(fitted_df))},
+            index=fitted_df.index,
+        )
+        for factor in model["factor_cols"]:
+            design_matrix[factor] = fitted_df[factor].astype(float)
+        return design_matrix
+    raise ValueError("Cannot rebuild design matrix for this model type.")
+
+
+def build_term_significance_table(
+    model,
+    include_intercept=False,
+    pure_error_summary=None,
+    measurement_error_summary=None,
+):
+    """Return term-wise coefficient significance statistics for a fitted model."""
+    if "statistics_df" in model:
+        term_df = model["statistics_df"].copy()
+    elif "term_statistics_df" in model:
+        term_df = model["term_statistics_df"].copy()
+    elif "coefficient_df" in model:
+        term_df = model["coefficient_df"].copy()
+    else:
+        raise ValueError("Model does not contain term statistics.")
+
+    if not include_intercept:
+        term_df = term_df[term_df["term"] != "Intercept"]
+
+    if "t_value" not in term_df and "standardized_effect" in term_df:
+        term_df["t_value"] = term_df["standardized_effect"]
+    if "F_value" not in term_df:
+        term_df["F_value"] = term_df["t_value"] ** 2 if "t_value" in term_df else np.nan
+    if "p_value" not in term_df:
+        term_df["p_value"] = np.nan
+
+    if pure_error_summary is not None and not pure_error_summary.empty:
+        pure_row = pure_error_summary.iloc[0]
+        pure_mse = pure_row.get("MSE_pure", np.nan)
+        pure_df = int(pure_row.get("df_pure", 0))
+        if pd.notna(pure_mse) and pure_df > 0:
+            try:
+                design_matrix = _design_matrix_from_model(model)
+                x = design_matrix.to_numpy(dtype=float)
+                xtx_inv = np.linalg.pinv(x.T @ x)
+                pure_standard_errors = pd.Series(
+                    np.sqrt(np.diag(xtx_inv) * pure_mse),
+                    index=design_matrix.columns,
+                )
+                term_df["pure_standard_error"] = term_df["term"].map(pure_standard_errors)
+                term_df["pure_t_value"] = (
+                    term_df["coefficient"] / term_df["pure_standard_error"]
+                )
+                term_df["pure_F_value"] = term_df["pure_t_value"] ** 2
+                try:
+                    from scipy import stats
+
+                    term_df["pure_p_value"] = 2 * stats.t.sf(
+                        term_df["pure_t_value"].abs(),
+                        df=pure_df,
+                    )
+                except Exception:
+                    term_df["pure_p_value"] = np.nan
+            except Exception:
+                pass
+
+    if measurement_error_summary is not None and not measurement_error_summary.empty:
+        measurement_row = measurement_error_summary.iloc[0]
+        measurement_mse = measurement_row.get("MSE_measurement", np.nan)
+        measurement_df = int(measurement_row.get("df_measurement", 0))
+        if pd.notna(measurement_mse) and measurement_df > 0:
+            try:
+                design_matrix = _design_matrix_from_model(model)
+                x = design_matrix.to_numpy(dtype=float)
+                xtx_inv = np.linalg.pinv(x.T @ x)
+                measurement_standard_errors = pd.Series(
+                    np.sqrt(np.diag(xtx_inv) * measurement_mse),
+                    index=design_matrix.columns,
+                )
+                term_df["measurement_standard_error"] = term_df["term"].map(
+                    measurement_standard_errors
+                )
+                term_df["measurement_t_value"] = (
+                    term_df["coefficient"]
+                    / term_df["measurement_standard_error"]
+                )
+                term_df["measurement_F_value"] = term_df["measurement_t_value"] ** 2
+                try:
+                    from scipy import stats
+
+                    term_df["measurement_p_value"] = 2 * stats.t.sf(
+                        term_df["measurement_t_value"].abs(),
+                        df=measurement_df,
+                    )
+                except Exception:
+                    term_df["measurement_p_value"] = np.nan
+            except Exception:
+                pass
+
+    columns = [
+        "term",
+        "coefficient",
+        "standard_error",
+        "t_value",
+        "F_value",
+        "p_value",
+        "pure_standard_error",
+        "pure_t_value",
+        "pure_F_value",
+        "pure_p_value",
+        "measurement_standard_error",
+        "measurement_t_value",
+        "measurement_F_value",
+        "measurement_p_value",
+    ]
+    return term_df.reindex(columns=columns)
 
 
 def plot_screening_model_effects(model, experiment=None):
@@ -1173,15 +1581,156 @@ def plot_screening_observed_vs_predicted(model, experiment=None):
             fontsize=8,
         )
 
-    ax.set_xlabel(f"Observed {response}")
-    ax.set_ylabel(f"Predicted {response}")
+    ax.set_xlabel(response_axis_label(response, prefix="Measured"))
+    ax.set_ylabel(response_axis_label(response, prefix="Predicted"))
     ax.set_title(experiment_title("Observed vs predicted", experiment))
     ax.grid(alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
 
 
-def plot_augmented_model_pareto(model, experiment=None):
+def build_model_anova_table(model):
+    """Build an overall ANOVA table for any fitted regression model.
+
+    The returned table separates response variation into the part explained by
+    the fitted model and the remaining residual variation. The F test is only
+    available when the model has residual degrees of freedom.
+    """
+    response = model["response"]
+    fitted_df = model["fitted_df"]
+    observed = fitted_df[response].to_numpy(dtype=float)
+    residual = fitted_df["residual"].to_numpy(dtype=float)
+
+    total_ss = float(np.sum((observed - observed.mean()) ** 2))
+    residual_ss = float(np.sum(residual**2))
+    model_ss = total_ss - residual_ss
+
+    if "info_df" in model:
+        rank = int(model["info_df"]["rank"].iloc[0])
+        residual_df = int(model["info_df"]["residual_df"].iloc[0])
+    else:
+        rank = int(model["rank"])
+        residual_df = int(model["residual_df"])
+
+    model_df = rank - 1
+    total_df = len(fitted_df) - 1
+
+    model_ms = model_ss / model_df if model_df > 0 else np.nan
+    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
+    f_value = (
+        model_ms / residual_ms
+        if residual_ms and not np.isnan(residual_ms)
+        else np.nan
+    )
+    try:
+        from scipy import stats
+
+        p_value = (
+            stats.f.sf(f_value, model_df, residual_df)
+            if pd.notna(f_value) and residual_df > 0
+            else np.nan
+        )
+    except Exception:
+        p_value = np.nan
+
+    return pd.DataFrame({
+        "source": ["Model", "Residual", "Total"],
+        "df": [model_df, residual_df, total_df],
+        "sum_sq": [model_ss, residual_ss, total_ss],
+        "mean_sq": [model_ms, residual_ms, np.nan],
+        "F_value": [f_value, np.nan, np.nan],
+        "p_value": [p_value, np.nan, np.nan],
+    })
+
+
+def build_error_comparison_table(
+    model,
+    pure_error_summary=None,
+    measurement_error_summary=None,
+):
+    """Compare regression residual error with replicate-based pure error."""
+    anova_table = build_model_anova_table(model)
+    residual_row = anova_table.loc[anova_table["source"] == "Residual"].iloc[0]
+    rows = [{
+        "error_basis": "regression residual",
+        "SS": residual_row["sum_sq"],
+        "df": residual_row["df"],
+        "MSE": residual_row["mean_sq"],
+        "s": np.sqrt(residual_row["mean_sq"]) if pd.notna(residual_row["mean_sq"]) else np.nan,
+    }]
+
+    if pure_error_summary is not None and not pure_error_summary.empty:
+        pure_row = pure_error_summary.iloc[0]
+        if int(pure_row.get("df_pure", 0)) > 0:
+            rows.append({
+                "error_basis": "replicate pure error",
+                "SS": pure_row["SS_pure"],
+                "df": pure_row["df_pure"],
+                "MSE": pure_row["MSE_pure"],
+                "s": pure_row["s_pure"],
+            })
+
+    if measurement_error_summary is not None and not measurement_error_summary.empty:
+        measurement_row = measurement_error_summary.iloc[0]
+        if int(measurement_row.get("df_measurement", 0)) > 0:
+            rows.append({
+                "error_basis": "measurement repeatability",
+                "SS": measurement_row["SS_measurement"],
+                "df": measurement_row["df_measurement"],
+                "MSE": measurement_row["MSE_measurement"],
+                "s": measurement_row["s_measurement"],
+            })
+
+    return pd.DataFrame(rows)
+
+
+def plot_model_anova(anova_table, response="mass_mean_g", experiment=None):
+    """Plot explained and residual sum of squares from an ANOVA table."""
+    plot_df = anova_table[anova_table["source"].isin(["Model", "Residual"])].copy()
+    if plot_df.empty:
+        return
+
+    colors = {
+        "Model": "#4c78a8",
+        "Residual": "#bbbbbb",
+    }
+    fig, ax = plt.subplots(figsize=(6.4, 3.8))
+    ax.bar(
+        plot_df["source"],
+        plot_df["sum_sq"],
+        color=[colors.get(source, "#777777") for source in plot_df["source"]],
+    )
+    for index, row in plot_df.iterrows():
+        if pd.notna(row["sum_sq"]):
+            ax.text(
+                row["source"],
+                row["sum_sq"],
+                f"{row['sum_sq']:.3g}",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+            )
+
+    unit = response_unit(response)
+    ax.set_ylabel(f"Sum of squares ({unit}^2)" if unit else "Sum of squares")
+    ax.set_title(
+        experiment_title(
+            f"ANOVA: explained vs residual {response_name_label(response)} variation",
+            experiment,
+        )
+    )
+    ax.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_augmented_model_pareto(
+    model,
+    experiment=None,
+    alpha=0.1,
+    pure_error_summary=None,
+    measurement_error_summary=None,
+):
     """Pareto chart from regression t-values for an unbalanced augmented model."""
     effect_df = model["statistics_df"].query("term != 'Intercept'").copy()
     use_t_values = effect_df["t_value"].notna().any()
@@ -1200,6 +1749,59 @@ def plot_augmented_model_pareto(model, experiment=None):
     ax.set_xlabel(x_label)
     ax.set_title(experiment_title("Augmented regression Pareto chart", experiment))
     ax.grid(axis="x", alpha=0.25)
+    if use_t_values:
+        residual_df = int(model["info_df"]["residual_df"].iloc[0])
+        if residual_df > 0:
+            try:
+                from scipy import stats
+
+                critical_value = stats.t.ppf(1 - alpha / 2, df=residual_df)
+                ax.axvline(
+                    critical_value,
+                    color="#d55e00",
+                    linewidth=1.5,
+                    label=f"alpha={alpha:g}, residual df",
+                )
+            except Exception:
+                pass
+        if pure_error_summary is not None and not pure_error_summary.empty:
+            pure_df = int(pure_error_summary.iloc[0].get("df_pure", 0))
+            if pure_df > 0:
+                try:
+                    from scipy import stats
+
+                    pure_critical_value = stats.t.ppf(1 - alpha / 2, df=pure_df)
+                    ax.axvline(
+                        pure_critical_value,
+                        color="#7b3294",
+                        linewidth=1.5,
+                        linestyle="--",
+                        label=f"alpha={alpha:g}, replicate-based df",
+                    )
+                except Exception:
+                    pass
+        if measurement_error_summary is not None and not measurement_error_summary.empty:
+            measurement_df = int(
+                measurement_error_summary.iloc[0].get("df_measurement", 0)
+            )
+            if measurement_df > 0:
+                try:
+                    from scipy import stats
+
+                    measurement_critical_value = stats.t.ppf(
+                        1 - alpha / 2,
+                        df=measurement_df,
+                    )
+                    ax.axvline(
+                        measurement_critical_value,
+                        color="#009e73",
+                        linewidth=1.5,
+                        linestyle=":",
+                        label=f"alpha={alpha:g}, measurement-based df",
+                    )
+                except Exception:
+                    pass
+        ax.legend(loc="lower left", frameon=False)
     plt.tight_layout()
     plt.show(block=False)
 
@@ -1265,9 +1867,9 @@ def plot_augmented_main_effects(
 
         ax.set_xticks(x_values)
         ax.set_xticklabels([f"{value:g}" for value in x_values])
-        ax.set_title(factor)
+        ax.set_title(factor_axis_label(factor))
         ax.set_xlabel("Real factor value")
-        ax.set_ylabel(f"Predicted {response}")
+        ax.set_ylabel(response_axis_label(response, prefix="Predicted"))
         ax.set_ylim(y_min - y_padding, y_max + y_padding)
         y_bottom, y_top = ax.get_ylim()
         y_safe = 0.09 * (y_top - y_bottom)
@@ -1333,10 +1935,14 @@ def plot_augmented_main_effects(
 
         ax.tick_params(axis="y", labelleft=True)
         ax.grid(alpha=0.25)
+        response_range_unit = response_unit(response)
+        response_range_label = f"Response range: Δ = {response_range:.2f}"
+        if response_range_unit:
+            response_range_label += f" {response_range_unit}"
         ax.text(
-        0.5,
+            0.5,
             -0.30,
-            f"Response range: Δ = {response_range:.2f} g",
+            response_range_label,
             transform=ax.transAxes,
             ha="center",
             va="top",
@@ -1367,12 +1973,13 @@ def plot_augmented_observed_vs_predicted(
     if run_col is None:
         fitted_df = fitted_df.reset_index().rename(columns={"index": "Run"})
         run_col = "Run"
+    fitted_df[run_col] = fitted_df[run_col].astype(str)
 
-    confirmation_mask = fitted_df[run_col].astype(str).eq(confirmation_run)
+    confirmation_mask = fitted_df[run_col].eq(str(confirmation_run))
     screening = fitted_df[~confirmation_mask]
     confirmation = fitted_df[confirmation_mask]
 
-    fig, ax = plt.subplots(figsize=(6.2, 5.6))
+    fig, ax = plt.subplots(figsize=(7.6, 5.6))
     ax.scatter(
         screening[response],
         screening["predicted_response"],
@@ -1405,12 +2012,12 @@ def plot_augmented_observed_vs_predicted(
             fontsize=8,
         )
 
-    ax.set_xlabel(f"Measured {response}")
-    ax.set_ylabel(f"Predicted {response}")
+    ax.set_xlabel(response_axis_label(response, prefix="Measured"))
+    ax.set_ylabel(response_axis_label(response, prefix="Predicted"))
     ax.set_title(experiment_title("Augmented actual vs predicted", experiment))
-    ax.legend(frameon=False)
+    ax.legend(frameon=False, loc="upper left", bbox_to_anchor=(1.02, 1.0))
     ax.grid(alpha=0.25)
-    plt.tight_layout()
+    fig.subplots_adjust(right=0.78)
     plt.show(block=False)
 
 
@@ -1445,8 +2052,10 @@ def plot_augmented_residuals(model, confirmation_run="E1", experiment=None):
         )
 
     ax.axhline(0, color="#333333", linewidth=1)
-    ax.set_xlabel(f"Predicted {model['response']}")
-    ax.set_ylabel("Residual g")
+    response = model["response"]
+    unit = response_unit(response)
+    ax.set_xlabel(response_axis_label(response, prefix="Predicted"))
+    ax.set_ylabel(f"Residual ({unit})" if unit else "Residual")
     ax.set_title(experiment_title("Augmented residuals", experiment))
     ax.grid(alpha=0.25)
     plt.tight_layout()
@@ -1662,7 +2271,7 @@ def plot_screening_confirmation_comparison(
         )
     ax.set_xticks(x)
     ax.set_xticklabels(plot_df["run"])
-    ax.set_ylabel(response)
+    ax.set_ylabel(response_axis_label(response, prefix="Measured"))
     ax.set_title(experiment_title("Confirmation runs", experiment))
     ax.legend()
     ax.grid(axis="y", alpha=0.25)
@@ -1965,38 +2574,7 @@ def format_quadratic_model_formula(model, response_label=None, digits=4):
 
 def build_quadratic_anova_table(model):
     """Build an overall ANOVA table for a fitted quadratic response model."""
-    response = model["response"]
-    fitted_df = model["fitted_df"]
-    observed = fitted_df[response].to_numpy(dtype=float)
-    residual = fitted_df["residual"].to_numpy(dtype=float)
-
-    total_ss = float(np.sum((observed - observed.mean()) ** 2))
-    residual_ss = float(np.sum(residual**2))
-    model_ss = total_ss - residual_ss
-
-    rank = int(model["info_df"]["rank"].iloc[0])
-    model_df = rank - 1
-    residual_df = int(model["info_df"]["residual_df"].iloc[0])
-    total_df = len(fitted_df) - 1
-
-    model_ms = model_ss / model_df if model_df > 0 else np.nan
-    residual_ms = residual_ss / residual_df if residual_df > 0 else np.nan
-    f_value = model_ms / residual_ms if residual_ms and not np.isnan(residual_ms) else np.nan
-    try:
-        from scipy import stats
-
-        p_value = stats.f.sf(f_value, model_df, residual_df)
-    except Exception:
-        p_value = np.nan
-
-    return pd.DataFrame({
-        "source": ["Model", "Residual", "Total"],
-        "df": [model_df, residual_df, total_df],
-        "sum_sq": [model_ss, residual_ss, total_ss],
-        "mean_sq": [model_ms, residual_ms, np.nan],
-        "F_value": [f_value, np.nan, np.nan],
-        "p_value": [p_value, np.nan, np.nan],
-    })
+    return build_model_anova_table(model)
 
 
 def predict_quadratic_response_surface(model, coded_df):
@@ -2005,7 +2583,12 @@ def predict_quadratic_response_surface(model, coded_df):
     return design_matrix @ model["coefficients"]
 
 
-def plot_quadratic_pareto(model, experiment=None, alpha=0.05):
+def plot_quadratic_pareto(
+    model,
+    experiment=None,
+    alpha=0.1,
+    pure_error_summary=None,
+):
     """Plot a Pareto chart of standardized quadratic-model effects."""
     term_df = model["term_statistics_df"].copy()
     term_df = term_df[term_df["term"] != "Intercept"]
@@ -2043,11 +2626,27 @@ def plot_quadratic_pareto(model, experiment=None, alpha=0.05):
                 critical_value,
                 color="#d95f02",
                 linewidth=1.5,
-                label=f"alpha={alpha:g} threshold",
+                label=f"alpha={alpha:g}, residual df",
             )
-            ax.legend(loc="lower right")
         except Exception:
             pass
+        if pure_error_summary is not None and not pure_error_summary.empty:
+            pure_df = int(pure_error_summary.iloc[0].get("df_pure", 0))
+            if pure_df > 0:
+                try:
+                    from scipy import stats
+
+                    pure_critical_value = stats.t.ppf(1 - alpha / 2, df=pure_df)
+                    ax.axvline(
+                        pure_critical_value,
+                        color="#7b3294",
+                        linewidth=1.5,
+                        linestyle="--",
+                        label=f"alpha={alpha:g}, replicate-based df",
+                    )
+                except Exception:
+                    pass
+        ax.legend(loc="lower left", frameon=False)
 
     plt.tight_layout()
     plt.show(block=False)
@@ -2080,7 +2679,9 @@ def plot_quadratic_coefficients(model, experiment=None):
     ax.axhline(0, color="black", linewidth=1)
     ax.set_xticks(x)
     ax.set_xticklabels(coefficient_df["term"])
-    ax.set_ylabel(f"Coefficient on {model['response']}")
+    ax.set_ylabel(
+        f"Coefficient on {response_axis_label(model['response'], prefix='')}"
+    )
     ax.set_title(experiment_title("Quadratic response-surface coefficients", experiment))
     ax.tick_params(axis="x", rotation=45)
     plt.tight_layout()
@@ -2115,8 +2716,8 @@ def plot_quadratic_observed_vs_predicted(model, experiment=None):
             fontsize=8,
         )
 
-    ax.set_xlabel(f"Observed {model['response']}")
-    ax.set_ylabel(f"Predicted {model['response']}")
+    ax.set_xlabel(response_axis_label(model["response"], prefix="Measured"))
+    ax.set_ylabel(response_axis_label(model["response"], prefix="Predicted"))
     ax.set_title(experiment_title("Observed vs predicted", experiment))
     ax.text(
         1.04,
@@ -2181,14 +2782,14 @@ def plot_quadratic_response_surface_slices(
 
         contour = ax.contourf(xx, yy, zz, levels=15, cmap="viridis")
         ax.contour(xx, yy, zz, levels=8, colors="white", linewidths=0.5, alpha=0.7)
-        ax.set_xlabel(factor_x)
-        ax.set_ylabel(factor_y)
-        ax.set_title(f"{factor_x} vs {factor_y}")
+        ax.set_xlabel(factor_axis_label(factor_x))
+        ax.set_ylabel(factor_axis_label(factor_y))
+        ax.set_title(f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}")
         ax.set_xlim(-1, 1)
         ax.set_ylim(-1, 1)
         ax.set_xticks([-1, 0, 1])
         ax.set_yticks([-1, 0, 1])
-        fig.colorbar(contour, ax=ax, label=model["response"])
+        fig.colorbar(contour, ax=ax, label=response_axis_label(model["response"], prefix=""))
 
     fig.suptitle(
         experiment_title(
@@ -2278,9 +2879,9 @@ def plot_quadratic_surface_and_contour_pairs(
             linewidths=1,
         )
         ax_surface.set_zlim(z_floor, np.nanmax(zz))
-        ax_surface.set_xlabel(factor_x)
-        ax_surface.set_ylabel(factor_y)
-        ax_surface.set_zlabel(model["response"])
+        ax_surface.set_xlabel(factor_axis_label(factor_x))
+        ax_surface.set_ylabel(factor_axis_label(factor_y))
+        ax_surface.set_zlabel(response_axis_label(model["response"], prefix=""))
         ax_surface.xaxis.labelpad = 10
         ax_surface.yaxis.labelpad = 10
         ax_surface.zaxis.labelpad = 12
@@ -2339,17 +2940,20 @@ def plot_quadratic_surface_and_contour_pairs(
                 s=35,
                 zorder=3,
             )
-        ax_contour.set_xlabel(factor_x)
-        ax_contour.set_ylabel(factor_y)
+        ax_contour.set_xlabel(factor_axis_label(factor_x))
+        ax_contour.set_ylabel(factor_axis_label(factor_y))
         ax_contour.set_xticks(x_ticks)
         ax_contour.set_yticks(y_ticks)
         ax_contour.set_xticklabels(x_tick_labels)
         ax_contour.set_yticklabels(y_tick_labels)
-        fig.colorbar(filled, ax=ax_contour, label=model["response"])
+        fig.colorbar(filled, ax=ax_contour, label=response_axis_label(model["response"], prefix=""))
 
         fig.suptitle(
             experiment_title(
-                f"Surface and contour {row_number}: {factor_x} vs {factor_y}",
+                (
+                    f"Surface and contour {row_number}: "
+                    f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}"
+                ),
                 experiment,
             ),
         )
@@ -2470,6 +3074,93 @@ def experiment_title(title, experiment=None):
 def factor_code(factor):
     return factor.split("_", 1)[0]
 
+
+def response_axis_label(response, prefix="Average"):
+    """Return a readable response label with units for plot axes."""
+    readable = response
+    for suffix in ["_mean_g", "_mean", "_g"]:
+        if readable.endswith(suffix):
+            readable = readable[: -len(suffix)]
+            break
+    readable = readable.replace("_g_cm3", "")
+    readable = readable.replace("_cm3", "")
+    readable = readable.replace("_percent", "")
+    for key, unit in RESPONSE_UNIT_MAP.items():
+        if readable == key or readable.startswith(f"{key}_"):
+            label = readable.replace("_", " ")
+            return f"{prefix} {label} ({unit})" if prefix else f"{label} ({unit})"
+    label = readable.replace("_", " ")
+    return f"{prefix} {label}" if prefix else label
+
+
+RESPONSE_UNIT_MAP = {
+    "mass": "g",
+    "weight": "g",
+    "volume": "cm3",
+    "density": "g/cm3",
+    "relative_density": "%",
+    "porosity": "%",
+    "leakage": "mbar L/s",
+    "log_leakage": "log(mbar L/s)",
+}
+
+
+def response_unit(response):
+    """Return only the unit for a response column, if known."""
+    readable = response
+    for suffix in ["_mean_g", "_mean", "_g"]:
+        if readable.endswith(suffix):
+            readable = readable[: -len(suffix)]
+            break
+    readable = readable.replace("_g_cm3", "")
+    readable = readable.replace("_cm3", "")
+    readable = readable.replace("_percent", "")
+    for key, unit in RESPONSE_UNIT_MAP.items():
+        if readable == key or readable.startswith(f"{key}_"):
+            return unit
+    return ""
+
+
+def response_name_label(response):
+    """Return a readable response name without unit."""
+    label = response_axis_label(response, prefix="")
+    if " (" in label:
+        label = label.rsplit(" (", 1)[0]
+    return label
+
+
+def factor_axis_label(factor):
+    """Return a readable factor label with units for plot axes."""
+    unit_map = {
+        "flow_ratio": "-",
+        "nozzle_temp": "°C",
+        "nozzle_temp_C": "°C",
+        "speed": "mm/s",
+        "speed_mm_s": "mm/s",
+        "line_width": "mm",
+        "layer_height": "mm",
+        "walls": "-",
+        "infill": "%",
+        "infill_percent": "%",
+        "ironing_flow": "%",
+        "ironing_flow_percent": "%",
+        "ironing_speed": "mm/s",
+        "ironing_speed_mm_s": "mm/s",
+        "ironing_line_spacing": "mm",
+        "ironing_line_spacing_mm": "mm",
+    }
+    readable = factor
+    if len(readable) > 2 and readable[1] == "_":
+        readable = readable[2:]
+    display_name = readable
+    for suffix in ["_mm_s", "_percent", "_mm", "_C"]:
+        if display_name.endswith(suffix):
+            display_name = display_name[: -len(suffix)]
+            break
+    unit = unit_map.get(readable)
+    label = display_name.replace("_", " ")
+    return f"{label} ({unit})" if unit else label
+
 def plot_mass_measurements(
     mass_measurements_g,
     mass_columns,
@@ -2572,9 +3263,15 @@ def plot_mass_measurements(
                 .agg({
                     "x": "first",
                     "mass_mean_g": "mean",
+                    "run": "count",
                 })
             )
             repeat_original_runs_with_data = set(repeat_df["original_run"])
+            repeat_label = (
+                "repeat print"
+                if repeat_df["run"].max() == 1
+                else "repeat print average"
+            )
             repeat_x = repeat_df["x"].to_numpy(dtype=float)
             if repeat_bar_offset is None:
                 repeat_bar_offset = (len(mass_columns) + 2.4) * bar_width / 2
@@ -2584,7 +3281,7 @@ def plot_mass_measurements(
                 repeat_df["mass_mean_g"],
                 width=bar_width,
                 color="#31a354",
-                label="repeat mean",
+                label=repeat_label,
                 alpha=0.85,
             )
 
@@ -2610,7 +3307,7 @@ def plot_mass_measurements(
             )
             if not repeatability_df.empty:
                 summary_lines.append(
-                    "Repeatability: "
+                    "Print-to-print repeatability: "
                     f"mean abs diff {repeatability_df['abs_difference_g'].mean():.3f} g; "
                     f"max {repeatability_df['abs_difference_g'].max():.3f} g"
                 )
@@ -2729,6 +3426,139 @@ def plot_mass_measurements(
         fig.subplots_adjust(right=0.70)
     else:
         fig.subplots_adjust(right=0.82, bottom=0.20)
+    plt.show(block=False)
+
+
+def plot_response_measurements(
+    response_measurements,
+    response_columns,
+    response_name,
+    y_label,
+    y_min=None,
+    y_max=None,
+    mean_label="Mean",
+    experiment=None,
+    value_digits=3,
+    extra_measurements=None,
+    extra_label="extra mean",
+    extra_color="#756bb1",
+    show_mean_line=True,
+):
+    """Plot repeated response measurements with their per-run mean."""
+    mean_col = f"{response_name}_mean"
+    std_col = f"{response_name}_std"
+    plot_columns = response_columns + [mean_col]
+    if std_col in response_measurements.columns:
+        plot_columns.append(std_col)
+
+    plot_df = response_measurements.set_index("run")[plot_columns].apply(
+        pd.to_numeric,
+        errors="coerce",
+    )
+    run_labels = plot_df.index.tolist()
+    x = np.arange(len(plot_df))
+    bar_width = 0.22
+
+    fig, ax = plt.subplots(figsize=(16, 4.3))
+    offsets = np.linspace(
+        -bar_width * (len(response_columns) - 1) / 2,
+        bar_width * (len(response_columns) - 1) / 2,
+        len(response_columns),
+    )
+    colors = ["#9ecae1", "#4292c6", "#08519c", "#08306b"]
+
+    for offset, column, color in zip(offsets, response_columns, colors):
+        ax.bar(x + offset, plot_df[column], width=bar_width, label=column, color=color)
+
+    tick_positions = x.tolist()
+    tick_labels = run_labels.copy()
+    if extra_measurements is not None and not extra_measurements.empty:
+        extra_df = extra_measurements[["run", mean_col]].copy()
+        extra_df[mean_col] = pd.to_numeric(extra_df[mean_col], errors="coerce")
+        extra_df = extra_df.dropna(subset=[mean_col])
+
+        if not extra_df.empty:
+            extra_x = np.arange(
+                len(plot_df) + 1,
+                len(plot_df) + 1 + len(extra_df),
+                dtype=float,
+            )
+            ax.bar(
+                extra_x,
+                extra_df[mean_col],
+                width=bar_width,
+                color=extra_color,
+                label=extra_label,
+                alpha=0.88,
+            )
+            for xi, value in zip(extra_x, extra_df[mean_col]):
+                ax.annotate(
+                    f"{value:.{value_digits}f}",
+                    xy=(xi, value),
+                    xytext=(0, 10),
+                    textcoords="offset points",
+                    ha="center",
+                    va="bottom",
+                    fontsize=8,
+                    color=extra_color,
+                )
+            tick_positions.extend(extra_x.tolist())
+            tick_labels.extend(extra_df["run"].tolist())
+
+    if show_mean_line:
+        ax.plot(
+            x,
+            plot_df[mean_col],
+            color="#000000",
+            marker="o",
+            linewidth=2,
+            label=mean_label,
+        )
+
+    for xi, value in zip(x, plot_df[mean_col]):
+        if pd.notna(value):
+            ax.annotate(
+                f"{value:.{value_digits}f}",
+                xy=(xi, value),
+                xytext=(0, 6),
+                textcoords="offset points",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+            )
+
+    ax.set_xlabel("Test plate")
+    ax.set_ylabel(y_label)
+    ax.set_title(experiment_title(f"{y_label} measurements", experiment))
+    if std_col in plot_df.columns and plot_df[std_col].notna().any():
+        measurement_uncertainty = np.sqrt((plot_df[std_col] ** 2).mean())
+        ax.text(
+            0.99,
+            0.96,
+            f"Mean measurement uncertainty: +/-{measurement_uncertainty:.{value_digits}f}",
+            transform=ax.transAxes,
+            ha="right",
+            va="top",
+            fontsize=9,
+            bbox={
+                "boxstyle": "round,pad=0.25",
+                "facecolor": "white",
+                "edgecolor": "#bbbbbb",
+                "alpha": 0.85,
+            },
+        )
+    if y_min is not None or y_max is not None:
+        ax.set_ylim(bottom=y_min, top=y_max)
+    ax.set_xticks(tick_positions)
+    ax.set_xticklabels(tick_labels, rotation=45)
+    ax.legend(
+        loc="upper left",
+        bbox_to_anchor=(1.01, 1.0),
+        borderaxespad=0,
+        frameon=False,
+    )
+    ax.grid(axis="y", alpha=0.3)
+    fig.subplots_adjust(right=0.82, bottom=0.20)
     plt.show(block=False)
 
 
@@ -2872,8 +3702,13 @@ def plot_main_effects_bar(main_effect_df, response="mass_mean_g", experiment=Non
     ]
     ax.bar(main_effect_df["Effect"], main_effect_df["Main effect"], color=colors)
     ax.axhline(0, color="black", linewidth=1)
-    ax.set_ylabel(f"Main effect on {response}")
-    ax.set_title(experiment_title("Main effects", experiment))
+    ax.set_ylabel(response_axis_label(response, prefix="Main effect on"))
+    ax.set_title(
+        experiment_title(
+            f"Main effects on {response_name_label(response)}",
+            experiment,
+        )
+    )
     ax.tick_params(axis="x", rotation=45)
     plt.tight_layout()
     plt.show(block=False)
@@ -2918,9 +3753,14 @@ def plot_main_effects_line(matrix, response="mass_mean_g", experiment=None):
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels)
     ax.tick_params(axis="x", pad=4)
-    ax.set_ylabel("Average Response")
+    ax.set_ylabel(response_axis_label(response, prefix="Average"))
     ax.set_xlabel("Factors", labelpad=22)
-    ax.set_title(experiment_title(f"Main effects plot ({response})", experiment))
+    ax.set_title(
+        experiment_title(
+            f"Main effects plot on {response_name_label(response)}",
+            experiment,
+        )
+    )
     fig.subplots_adjust(bottom=0.18)
     plt.show(block=False)
 
@@ -2974,8 +3814,13 @@ def plot_main_effects_line_comparison(
         ax.set_xlabel("Factors", labelpad=26)
         ax.grid(axis="y", alpha=0.2)
 
-    axes[0].set_ylabel("Average Response")
-    fig.suptitle(experiment_title(f"Conditional trends ({response})", experiment))
+        axes[0].set_ylabel(response_axis_label(response, prefix="Average"))
+    fig.suptitle(
+        experiment_title(
+            f"Conditional trends on {response_name_label(response)}",
+            experiment,
+        )
+    )
     fig.subplots_adjust(bottom=0.22, top=0.84, wspace=0.18)
     plt.show(block=False)
 
@@ -3021,14 +3866,19 @@ def plot_three_level_main_effects(
             color=FACTOR_COLORS.get(factor, "#008b8b"),
             linewidth=1.8,
         )
-        ax.set_title(factor)
-        ax.set_xlabel(factor)
+        ax.set_title(factor_axis_label(factor))
+        ax.set_xlabel(factor_axis_label(factor))
         ax.set_xticks(x_values)
         ax.set_xticklabels(x_labels)
         ax.grid(axis="y", alpha=0.25)
 
-    axes[0].set_ylabel(response)
-    fig.suptitle(experiment_title(f"Three-level main effects ({response})", experiment))
+    axes[0].set_ylabel(response_axis_label(response, prefix="Mean"))
+    fig.suptitle(
+        experiment_title(
+            f"Three-level main effects on {response_name_label(response)}",
+            experiment,
+        )
+    )
     fig.subplots_adjust(bottom=0.22, top=0.82, wspace=0.18)
     plt.show(block=False)
 
@@ -3231,13 +4081,11 @@ def plot_interaction_effects(interaction_effects, experiment=None):
         ascending=False,
     )
 
-    interaction_effects_df["Color factor"] = (
-        interaction_effects_df["Interaction"].str.split(" x ").str[0]
+    colors = np.where(
+        interaction_effects_df["Effect"] >= 0,
+        "#006400",
+        "#8b0000",
     )
-    colors = [
-        FACTOR_COLORS.get(factor, "#7f7f7f")
-        for factor in interaction_effects_df["Color factor"]
-    ]
 
     plt.figure(figsize=(16, 5))
     plt.bar(
@@ -3251,22 +4099,27 @@ def plot_interaction_effects(interaction_effects, experiment=None):
     plt.title(experiment_title("Interaction effects plot", experiment))
     plt.xticks(rotation=35, ha="right")
 
-    legend_factors = list(dict.fromkeys(interaction_effects_df["Color factor"]))
     legend_handles = [
         plt.Rectangle(
             (0, 0),
             1,
             1,
-            color=FACTOR_COLORS.get(factor, "#7f7f7f"),
-            label=factor,
+            color="#006400",
+            label="positive interaction",
+        ),
+        plt.Rectangle(
+            (0, 0),
+            1,
+            1,
+            color="#8b0000",
+            label="negative interaction",
         )
-        for factor in legend_factors
     ]
     plt.legend(
         handles=legend_handles,
-        title="First factor",
         loc="upper left",
         bbox_to_anchor=(1.01, 1.0),
+        frameon=False,
     )
 
     plt.tight_layout(rect=[0, 0, 0.84, 1])

@@ -7,6 +7,7 @@ from pla_doe_measurement_loader import (
     design_by_name,
     load_pla_doe_data,
     mass_measurements_from_runs,
+    response_measurements_from_runs,
     repeat_mass_measurements_from_runs,
     repeat_runs,
     run_labels,
@@ -64,6 +65,19 @@ for _name, _run_records in {
 # Compatibility exports used by the existing notebook.
 FD_I_MASS_1_G = [run["mass_g"][0] for run in FD_I_RUNS]
 FD_I_MASS_MEASUREMENTS_G = mass_measurements_from_runs(FD_I_RUNS)
+FD_I_HYDROSTATIC_MEASUREMENTS = {
+    "weight_in_air_g": response_measurements_from_runs(FD_I["runs"], "weight_in_air_g"),
+    "weight_in_water_g": response_measurements_from_runs(
+        FD_I["runs"],
+        "weight_in_water_g",
+    ),
+    "volume_cm3": response_measurements_from_runs(FD_I["runs"], "volume_cm3"),
+    "density_g_cm3": response_measurements_from_runs(FD_I["runs"], "density_g_cm3"),
+    "relative_density_percent": response_measurements_from_runs(
+        FD_I["runs"],
+        "relative_density_percent",
+    ),
+}
 FD_I_REPEAT_MASS_1_G = {
     run["run"]: run["mass_g"][0]
     for run in FD_I_REPEAT_RUNS
