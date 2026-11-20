@@ -19,13 +19,16 @@ FULL_FACTOR_COLUMNS = [
 
 FACTOR_COLORS = {
     "A_flow_ratio": "#1f77b4",
+    "B_flow_ratio": "#1f77b4",
     "B_nozzle_temp": "#ff7f0e",
     "B_nozzle_temp_C": "#ff7f0e",
+    "C_nozzle_temp": "#ff7f0e",
     "C_speed": "#2ca02c",
     "C_ironing_flow_percent": "#2ca02c",
     "D_line_width": "#d62728",
     "D_ironing_speed_mm_s": "#d62728",
     "E_layer_height": "#9467bd",
+    "A_layer_height": "#9467bd",
     "F_walls": "#8c564b",
 }
 
@@ -896,7 +899,7 @@ def plot_center_point_repeatability(
             xytext=(0, 7),
             textcoords="offset points",
             ha="center",
-            fontsize=8,
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
         )
 
     ax.set_xticks(x)
@@ -1353,6 +1356,8 @@ def build_term_significance_table(
     include_intercept=False,
     pure_error_summary=None,
     measurement_error_summary=None,
+    additional_alphas=None,
+    additional_pure_error_alphas=None,
 ):
     """Return term-wise coefficient significance statistics for a fitted model."""
     if "statistics_df" in model:
@@ -1453,6 +1458,20 @@ def build_term_significance_table(
         "measurement_F_value",
         "measurement_p_value",
     ]
+
+    for alpha in additional_alphas or []:
+        column = f"p_value_below_{alpha:g}"
+        term_df[column] = term_df["p_value"].lt(alpha)
+        columns.append(column)
+
+    for alpha in additional_pure_error_alphas or []:
+        column = f"pure_p_value_below_{alpha:g}"
+        if "pure_p_value" in term_df:
+            term_df[column] = term_df["pure_p_value"].lt(alpha)
+        else:
+            term_df[column] = False
+        columns.append(column)
+
     return term_df.reindex(columns=columns)
 
 
@@ -1684,41 +1703,61 @@ def build_error_comparison_table(
     return pd.DataFrame(rows)
 
 
-def plot_model_anova(anova_table, response="mass_mean_g", experiment=None):
-    """Plot explained and residual sum of squares from an ANOVA table."""
+def plot_model_anova(
+    anova_table,
+    response="mass_mean_g",
+    experiment=None,
+    variation_percent=False,
+):
+    """Plot explained and residual variation from an ANOVA table."""
     plot_df = anova_table[anova_table["source"].isin(["Model", "Residual"])].copy()
     if plot_df.empty:
         return
 
-    colors = {
-        "Model": "#4c78a8",
-        "Residual": "#bbbbbb",
-    }
+    if variation_percent:
+        total_sum_sq = plot_df["sum_sq"].sum()
+        if not np.isfinite(total_sum_sq) or total_sum_sq <= 0:
+            return
+        plot_df["plot_value"] = 100.0 * plot_df["sum_sq"] / total_sum_sq
+        plot_df["plot_label"] = plot_df["source"].map({
+            "Model": "Explained by model",
+            "Residual": "Residual",
+        })
+        colors = {"Model": "#4f9275", "Residual": "#e07a3f"}
+        value_format = lambda value: f"{value:.1f}%"
+        y_label = "Share of total density variation (%)"
+        title_text = "ANOVA: explained versus residual density variation"
+    else:
+        plot_df["plot_value"] = plot_df["sum_sq"]
+        plot_df["plot_label"] = plot_df["source"]
+        colors = {"Model": "#4c78a8", "Residual": "#bbbbbb"}
+        value_format = lambda value: f"{value:.3g}"
+        unit = response_unit(response)
+        y_label = f"Sum of squares ({unit}^2)" if unit else "Sum of squares"
+        title_text = f"ANOVA: explained vs residual {response_name_label(response)} variation"
+
     fig, ax = plt.subplots(figsize=(6.4, 3.8))
-    ax.bar(
-        plot_df["source"],
-        plot_df["sum_sq"],
+    bars = ax.bar(
+        plot_df["plot_label"],
+        plot_df["plot_value"],
         color=[colors.get(source, "#777777") for source in plot_df["source"]],
     )
-    for index, row in plot_df.iterrows():
-        if pd.notna(row["sum_sq"]):
-            ax.text(
-                row["source"],
-                row["sum_sq"],
-                f"{row['sum_sq']:.3g}",
+    for bar, value in zip(bars, plot_df["plot_value"]):
+        if pd.notna(value):
+            ax.annotate(
+                value_format(value),
+                (bar.get_x() + bar.get_width() / 2, value),
+                xytext=(0, 6),
+                textcoords="offset points",
                 ha="center",
                 va="bottom",
-                fontsize=9,
+                fontsize=max(9, plt.rcParams["font.size"] - 1),
             )
 
-    unit = response_unit(response)
-    ax.set_ylabel(f"Sum of squares ({unit}^2)" if unit else "Sum of squares")
-    ax.set_title(
-        experiment_title(
-            f"ANOVA: explained vs residual {response_name_label(response)} variation",
-            experiment,
-        )
-    )
+    ax.set_ylabel(y_label)
+    ax.set_title(experiment_title(title_text, experiment), pad=22)
+    if variation_percent:
+        ax.set_ylim(0, max(105, plot_df["plot_value"].max() * 1.15))
     ax.grid(axis="y", alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
@@ -1727,11 +1766,19 @@ def plot_model_anova(anova_table, response="mass_mean_g", experiment=None):
 def plot_augmented_model_pareto(
     model,
     experiment=None,
-    alpha=0.1,
+    alpha=0.05,
+    additional_alphas=None,
+    additional_pure_error_alphas=None,
     pure_error_summary=None,
     measurement_error_summary=None,
+    legend_outside=False,
 ):
     """Pareto chart from regression t-values for an unbalanced augmented model."""
+    measurement_repeatability_available = (
+        measurement_error_summary is not None
+        and not measurement_error_summary.empty
+        and int(measurement_error_summary.iloc[0].get("df_measurement", 0)) > 0
+    )
     effect_df = model["statistics_df"].query("term != 'Intercept'").copy()
     use_t_values = effect_df["t_value"].notna().any()
     if use_t_values:
@@ -1744,7 +1791,8 @@ def plot_augmented_model_pareto(
     effect_df = effect_df.sort_values("plot_value", ascending=True)
     colors = [FACTOR_COLORS.get(term, "#4c78a8") for term in effect_df["term"]]
 
-    fig, ax = plt.subplots(figsize=(9, 4.8))
+    figure_width = 11.5 if legend_outside else 9
+    fig, ax = plt.subplots(figsize=(figure_width, 4.8))
     ax.barh(effect_df["term"], effect_df["plot_value"], color=colors)
     ax.set_xlabel(x_label)
     ax.set_title(experiment_title("Augmented regression Pareto chart", experiment))
@@ -1760,8 +1808,37 @@ def plot_augmented_model_pareto(
                     critical_value,
                     color="#d55e00",
                     linewidth=1.5,
-                    label=f"alpha={alpha:g}, residual df",
+                    label=(
+                        f"\N{GREEK SMALL LETTER ALPHA} = {alpha:g}, "
+                        "regression residual"
+                        if measurement_repeatability_available
+                        else f"alpha={alpha:g}, residual df"
+                    ),
                 )
+                comparison_colors = ["#006b3c", "#cc79a7", "#56b4e9"]
+                for comparison_index, comparison_alpha in enumerate(
+                    additional_alphas or []
+                ):
+                    if not 0 < comparison_alpha < 1 or np.isclose(
+                        comparison_alpha,
+                        alpha,
+                    ):
+                        continue
+                    comparison_critical_value = stats.t.ppf(
+                        1 - comparison_alpha / 2,
+                        df=residual_df,
+                    )
+                    ax.axvline(
+                        comparison_critical_value,
+                        color=comparison_colors[
+                            comparison_index % len(comparison_colors)
+                        ],
+                        linewidth=1.5,
+                        linestyle="--",
+                        label=(
+                            f"alpha={comparison_alpha:g}, residual df"
+                        ),
+                    )
             except Exception:
                 pass
         if pure_error_summary is not None and not pure_error_summary.empty:
@@ -1778,6 +1855,30 @@ def plot_augmented_model_pareto(
                         linestyle="--",
                         label=f"alpha={alpha:g}, replicate-based df",
                     )
+                    pure_comparison_colors = ["#0072b2", "#e69f00", "#cc79a7"]
+                    for comparison_index, comparison_alpha in enumerate(
+                        additional_pure_error_alphas or []
+                    ):
+                        if not 0 < comparison_alpha < 1 or np.isclose(
+                            comparison_alpha,
+                            alpha,
+                        ):
+                            continue
+                        comparison_critical_value = stats.t.ppf(
+                            1 - comparison_alpha / 2,
+                            df=pure_df,
+                        )
+                        ax.axvline(
+                            comparison_critical_value,
+                            color=pure_comparison_colors[
+                                comparison_index % len(pure_comparison_colors)
+                            ],
+                            linewidth=1.5,
+                            linestyle=":",
+                            label=(
+                                f"alpha={comparison_alpha:g}, replicate-based df"
+                            ),
+                        )
                 except Exception:
                     pass
         if measurement_error_summary is not None and not measurement_error_summary.empty:
@@ -1797,12 +1898,25 @@ def plot_augmented_model_pareto(
                         color="#009e73",
                         linewidth=1.5,
                         linestyle=":",
-                        label=f"alpha={alpha:g}, measurement-based df",
+                        label=(
+                            f"\N{GREEK SMALL LETTER ALPHA} = {alpha:g}, "
+                            "measurement repeatability"
+                        ),
                     )
                 except Exception:
                     pass
-        ax.legend(loc="lower left", frameon=False)
-    plt.tight_layout()
+        if legend_outside:
+            ax.legend(
+                loc="center left",
+                bbox_to_anchor=(1.02, 0.5),
+                frameon=False,
+            )
+        else:
+            ax.legend(loc="lower right", frameon=False)
+    if legend_outside:
+        plt.tight_layout(rect=(0, 0, 0.72, 1))
+    else:
+        plt.tight_layout()
     plt.show(block=False)
 
 
@@ -1811,6 +1925,8 @@ def plot_augmented_main_effects(
     levels,
     experiment=None,
     plot_label="Augmented regression main effects",
+    figsize=None,
+    square_axes=False,
 ):
     """Plot fitted low/high main effects from a coded regression model."""
     factor_cols = model["factor_cols"]
@@ -1823,14 +1939,17 @@ def plot_augmented_main_effects(
         for factor in factor_cols
     }
 
+    column_count = min(3, len(factor_cols))
+    row_count = int(np.ceil(len(factor_cols) / column_count))
     fig, axes = plt.subplots(
-        1,
-        len(factor_cols),
-        figsize=(3.55 * len(factor_cols), 4.25),
+        row_count,
+        column_count,
+        figsize=figsize or (3.55 * column_count, 4.0 * row_count),
         sharey=True,
+        squeeze=False,
     )
-    if len(factor_cols) == 1:
-        axes = [axes]
+    axes_flat = axes.ravel()
+    response_label_y = -0.16 if row_count > 1 else -0.24
 
     plotted_values = []
     factor_plot_data = {}
@@ -1856,7 +1975,7 @@ def plot_augmented_main_effects(
     y_max = max(plotted_values)
     y_padding = 0.12 * (y_max - y_min) if y_max > y_min else 0.1
 
-    for ax, factor in zip(axes, factor_cols):
+    for ax, factor in zip(axes_flat, factor_cols):
         factor_color = FACTOR_COLORS.get(factor, "#08519c")
         rows = factor_plot_data[factor]
         x_values = [row[0] for row in rows]
@@ -1868,7 +1987,7 @@ def plot_augmented_main_effects(
         ax.set_xticks(x_values)
         ax.set_xticklabels([f"{value:g}" for value in x_values])
         ax.set_title(factor_axis_label(factor))
-        ax.set_xlabel("Real factor value")
+        ax.set_xlabel(factor_axis_label(factor))
         ax.set_ylabel(response_axis_label(response, prefix="Predicted"))
         ax.set_ylim(y_min - y_padding, y_max + y_padding)
         y_bottom, y_top = ax.get_ylim()
@@ -1922,7 +2041,7 @@ def plot_augmented_main_effects(
                 transform=ax.get_yaxis_transform(),
                 ha=ha,
                 va=va,
-                fontsize=8,
+                fontsize=plt.rcParams["font.size"],
                 color=factor_color,
                 clip_on=True,
                 bbox={
@@ -1934,6 +2053,8 @@ def plot_augmented_main_effects(
             )
 
         ax.tick_params(axis="y", labelleft=True)
+        if square_axes:
+            ax.set_box_aspect(1)
         ax.grid(alpha=0.25)
         response_range_unit = response_unit(response)
         response_range_label = f"Response range: Δ = {response_range:.2f}"
@@ -1941,22 +2062,26 @@ def plot_augmented_main_effects(
             response_range_label += f" {response_range_unit}"
         ax.text(
             0.5,
-            -0.30,
+            response_label_y,
             response_range_label,
             transform=ax.transAxes,
             ha="center",
             va="top",
-            fontsize=9,
+            fontsize=plt.rcParams["font.size"],
             color=factor_color,
         )
 
-    fig.suptitle(experiment_title(plot_label, experiment))
+    for ax in axes_flat[len(factor_cols):]:
+        ax.set_visible(False)
+
+    fig.suptitle(experiment_title(plot_label, experiment), y=0.98)
     fig.subplots_adjust(
-        left=0.06,
-        right=0.985,
-        bottom=0.24,
-        top=0.78,
-        wspace=0.46,
+        left=0.08,
+        right=0.98,
+        bottom=0.27 if square_axes and row_count == 1 else 0.12,
+        top=0.82 if row_count == 1 else 0.91,
+        wspace=0.38 if square_axes else 0.34,
+        hspace=0.34 if row_count > 1 else 0.2,
     )
     plt.show(block=False)
 
@@ -2009,7 +2134,7 @@ def plot_augmented_observed_vs_predicted(
             (row[response], row["predicted_response"]),
             xytext=(4, 4),
             textcoords="offset points",
-            fontsize=8,
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
         )
 
     ax.set_xlabel(response_axis_label(response, prefix="Measured"))
@@ -2048,7 +2173,7 @@ def plot_augmented_residuals(model, confirmation_run="E1", experiment=None):
             (row["predicted_response"], row["residual"]),
             xytext=(4, 4),
             textcoords="offset points",
-            fontsize=8,
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
         )
 
     ax.axhline(0, color="#333333", linewidth=1)
@@ -2058,6 +2183,70 @@ def plot_augmented_residuals(model, confirmation_run="E1", experiment=None):
     ax.set_ylabel(f"Residual ({unit})" if unit else "Residual")
     ax.set_title(experiment_title("Augmented residuals", experiment))
     ax.grid(alpha=0.25)
+    plt.tight_layout()
+    plt.show(block=False)
+
+
+def plot_screening_half_normal(model, experiment=None):
+    """Plot absolute regression t values against expected half-normal quantiles."""
+    plot_df = model["statistics_df"].copy()
+    plot_df = plot_df[plot_df["term"] != "Intercept"].copy()
+    plot_df["absolute_t"] = plot_df["t_value"].abs()
+    plot_df = plot_df.replace([np.inf, -np.inf], np.nan).dropna(
+        subset=["absolute_t"]
+    )
+    plot_df = plot_df.sort_values("absolute_t").reset_index(drop=True)
+    if plot_df.empty:
+        return
+
+    from scipy import stats
+
+    probabilities = (np.arange(1, len(plot_df) + 1) - 0.5) / len(plot_df)
+    plot_df["expected_half_normal_quantile"] = stats.halfnorm.ppf(probabilities)
+
+    fig, ax = plt.subplots(figsize=(7.6, 5.2))
+    for _, row in plot_df.iterrows():
+        factor = _term_base_factor(row["term"])
+        color = FACTOR_COLORS.get(factor, "#4c78a8")
+        ax.scatter(
+            row["expected_half_normal_quantile"],
+            row["absolute_t"],
+            color=color,
+            s=54,
+            zorder=3,
+        )
+        ax.annotate(
+            row["term"],
+            (row["expected_half_normal_quantile"], row["absolute_t"]),
+            xytext=(5, 4),
+            textcoords="offset points",
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
+        )
+
+    reference_count = max(2, len(plot_df) // 2)
+    reference = plot_df.iloc[:reference_count]
+    if reference["expected_half_normal_quantile"].nunique() > 1:
+        slope, intercept = np.polyfit(
+            reference["expected_half_normal_quantile"],
+            reference["absolute_t"],
+            1,
+        )
+        x_line = np.linspace(0, plot_df["expected_half_normal_quantile"].max(), 100)
+        ax.plot(
+            x_line,
+            intercept + slope * x_line,
+            color="0.35",
+            linestyle="--",
+            linewidth=1.2,
+            label="reference from smaller effects",
+        )
+
+    ax.set_xlabel("Expected half-normal quantile")
+    ax.set_ylabel("Absolute standardized effect |t|")
+    ax.set_title(experiment_title("Half-normal plot of regression effects", experiment))
+    ax.grid(alpha=0.25)
+    if ax.get_legend_handles_labels()[0]:
+        ax.legend(frameon=False, loc="upper left")
     plt.tight_layout()
     plt.show(block=False)
 
@@ -2586,7 +2775,7 @@ def predict_quadratic_response_surface(model, coded_df):
 def plot_quadratic_pareto(
     model,
     experiment=None,
-    alpha=0.1,
+    alpha=0.05,
     pure_error_summary=None,
 ):
     """Plot a Pareto chart of standardized quadratic-model effects."""
@@ -2646,7 +2835,7 @@ def plot_quadratic_pareto(
                     )
                 except Exception:
                     pass
-        ax.legend(loc="lower left", frameon=False)
+        ax.legend(loc="lower right", frameon=False)
 
     plt.tight_layout()
     plt.show(block=False)
@@ -2747,6 +2936,136 @@ def plot_quadratic_observed_vs_predicted(model, experiment=None):
     plt.show(block=False)
 
 
+def plot_quadratic_interaction_profiles(
+    model,
+    levels,
+    fixed_level=0,
+    experiment=None,
+    figsize=None,
+    square_axes=False,
+):
+    """Plot fitted three-level interaction profiles for each factor pair.
+
+    One factor varies continuously, the second is traced at its low, center,
+    and high levels, and every remaining factor is held at ``fixed_level``.
+    Measured runs lying on the corresponding response-surface slice are
+    overlaid using the same trace colors.
+    """
+    factor_cols = list(model["factor_cols"])
+    factor_pairs = list(itertools.combinations(factor_cols, 2))
+    if not factor_pairs:
+        raise ValueError("At least two factors are required for an interaction plot.")
+
+    column_count = min(3, len(factor_pairs))
+    row_count = int(np.ceil(len(factor_pairs) / column_count))
+    fig, axes = plt.subplots(
+        row_count,
+        column_count,
+        figsize=figsize or (5.0 * column_count, 4.4 * row_count),
+        sharey=True,
+        squeeze=False,
+    )
+    axes_flat = axes.ravel()
+
+    trace_styles = {
+        -1: {"color": "#2166ac", "label": "low"},
+        0: {"color": "#666666", "label": "center"},
+        1: {"color": "#b2182b", "label": "high"},
+    }
+    coded_x = np.linspace(-1, 1, 121)
+    fitted_df = model["fitted_df"]
+    response = model["response"]
+
+    for axis, (factor_x, factor_trace) in zip(axes_flat, factor_pairs):
+        x_level_map = levels[factor_x]
+        real_x = np.interp(
+            coded_x,
+            [-1, 0, 1],
+            [x_level_map[-1], x_level_map[0], x_level_map[1]],
+        )
+        remaining_factors = [
+            factor
+            for factor in factor_cols
+            if factor not in (factor_x, factor_trace)
+        ]
+
+        slice_mask = pd.Series(True, index=fitted_df.index)
+        for factor in remaining_factors:
+            slice_mask &= fitted_df[factor].eq(fixed_level)
+        slice_df = fitted_df.loc[slice_mask]
+
+        for trace_level, style in trace_styles.items():
+            prediction_df = pd.DataFrame({
+                factor: np.full_like(coded_x, fixed_level, dtype=float)
+                for factor in factor_cols
+            })
+            prediction_df[factor_x] = coded_x
+            prediction_df[factor_trace] = trace_level
+            predicted = predict_quadratic_response_surface(
+                model,
+                prediction_df,
+            )
+
+            trace_value = levels[factor_trace][trace_level]
+            axis.plot(
+                real_x,
+                predicted,
+                color=style["color"],
+                linewidth=1.8,
+                label=f"{style['label']} ({trace_value:g})",
+            )
+
+            measured = slice_df.loc[slice_df[factor_trace].eq(trace_level)]
+            if not measured.empty:
+                measured_real_x = measured[factor_x].map(x_level_map)
+                axis.scatter(
+                    measured_real_x,
+                    measured[response],
+                    color=style["color"],
+                    edgecolor="white",
+                    linewidth=0.6,
+                    s=42,
+                    zorder=3,
+                )
+
+        axis.set_title(
+            f"{factor_axis_label(factor_x)} x {factor_axis_label(factor_trace)}"
+        )
+        axis.set_xlabel(factor_axis_label(factor_x))
+        axis.set_xticks([
+            x_level_map[-1],
+            x_level_map[0],
+            x_level_map[1],
+        ])
+        axis.legend(
+            title=factor_axis_label(factor_trace),
+            frameon=False,
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
+            title_fontsize=plt.rcParams["font.size"],
+        )
+        axis.grid(alpha=0.25)
+        if square_axes:
+            axis.set_box_aspect(1)
+
+    for axis in axes_flat[len(factor_pairs):]:
+        axis.set_visible(False)
+
+    fig.supylabel(response_axis_label(response, prefix="Predicted"), x=0.01)
+    fig.suptitle(
+        experiment_title("Quadratic-model interaction profiles", experiment),
+        y=0.98,
+    )
+    fig.subplots_adjust(
+        left=0.07,
+        right=0.985,
+        bottom=0.15 if square_axes else 0.12,
+        top=0.82 if row_count == 1 else 0.90,
+        wspace=0.30 if square_axes else 0.25,
+        hspace=0.42,
+    )
+    plt.show(block=False)
+
+
 def plot_quadratic_response_surface_slices(
     model,
     fixed_level=0,
@@ -2800,12 +3119,92 @@ def plot_quadratic_response_surface_slices(
     plt.show(block=False)
 
 
+def plot_screening_response_contours(
+    model,
+    levels=None,
+    factor_pairs=None,
+    fixed_level=0,
+    grid_points=61,
+    max_columns=3,
+    experiment=None,
+):
+    """Plot pairwise contours from a coded linear main-effects screening model."""
+    factor_cols = model["factor_cols"]
+    coefficients = model["coefficients"]
+    if factor_pairs is None:
+        factor_pairs = list(itertools.combinations(factor_cols, 2))
+
+    column_count = min(max_columns, len(factor_pairs))
+    row_count = int(np.ceil(len(factor_pairs) / column_count))
+    fig, axes = plt.subplots(
+        row_count,
+        column_count,
+        figsize=(5.4 * column_count, 4.4 * row_count),
+        constrained_layout=True,
+        squeeze=False,
+    )
+    coded_grid = np.linspace(-1, 1, grid_points)
+
+    def real_grid(factor, coded_values):
+        if levels is None or factor not in levels:
+            return coded_values
+        factor_levels = levels[factor]
+        low = factor_levels.get(-1, factor_levels.get("-1", -1))
+        high = factor_levels.get(1, factor_levels.get("1", 1))
+        return low + (coded_values + 1) * (high - low) / 2
+
+    for axis, (factor_x, factor_y) in zip(axes.flat, factor_pairs):
+        xx_coded, yy_coded = np.meshgrid(coded_grid, coded_grid)
+        zz = np.full(xx_coded.shape, float(coefficients["Intercept"]))
+        for factor in factor_cols:
+            factor_values = np.full(xx_coded.shape, fixed_level, dtype=float)
+            if factor == factor_x:
+                factor_values = xx_coded
+            elif factor == factor_y:
+                factor_values = yy_coded
+            zz += float(coefficients[factor]) * factor_values
+
+        xx_real = real_grid(factor_x, xx_coded)
+        yy_real = real_grid(factor_y, yy_coded)
+        contour = axis.contourf(xx_real, yy_real, zz, levels=15, cmap="viridis")
+        axis.contour(
+            xx_real,
+            yy_real,
+            zz,
+            levels=8,
+            colors="white",
+            linewidths=0.6,
+            alpha=0.8,
+        )
+        axis.set_xlabel(factor_axis_label(factor_x))
+        axis.set_ylabel(factor_axis_label(factor_y))
+        axis.set_title(f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}")
+        fig.colorbar(
+            contour,
+            ax=axis,
+            label=response_axis_label(model["response"], prefix="Predicted"),
+        )
+
+    for axis in axes.flat[len(factor_pairs):]:
+        axis.set_visible(False)
+
+    fig.suptitle(
+        experiment_title("Linear screening contour plots", experiment),
+        fontsize=14,
+    )
+    plt.show(block=False)
+
+
 def plot_quadratic_surface_and_contour_pairs(
     model,
     levels=None,
     fixed_level=0,
     grid_points=41,
     experiment=None,
+    combine_pairs=False,
+    contours_only=False,
+    font_size=None,
+    shared_colorbar=False,
 ):
     """Plot paired 3D surface and 2D contour maps for each factor pair.
 
@@ -2816,6 +3215,34 @@ def plot_quadratic_surface_and_contour_pairs(
     factor_cols = model["factor_cols"]
     factor_pairs = list(itertools.combinations(factor_cols, 2))
     grid = np.linspace(-1, 1, grid_points)
+    base_font_size = (
+        float(plt.rcParams["font.size"])
+        if font_size is None
+        else float(font_size)
+    )
+    tick_font_size = max(9, base_font_size - 1)
+    panel_title_size = base_font_size + 2
+    suptitle_size = base_font_size + 5
+
+    combined_figure = None
+    combined_grid = None
+    if combine_pairs:
+        if contours_only:
+            combined_figure = plt.figure(figsize=(5.8 * len(factor_pairs), 5.2))
+            combined_grid = combined_figure.add_gridspec(
+                1,
+                len(factor_pairs),
+                wspace=0.28 if shared_colorbar else 0.58,
+            )
+        else:
+            combined_figure = plt.figure(figsize=(15, 5.0 * len(factor_pairs)))
+            combined_grid = combined_figure.add_gridspec(
+                len(factor_pairs),
+                2,
+                width_ratios=[1, 1],
+                hspace=0.34,
+                wspace=0.26,
+            )
 
     def coded_grid_to_real(factor, coded_values):
         coded_levels = np.array([-1, 0, 1], dtype=float)
@@ -2825,7 +3252,7 @@ def plot_quadratic_surface_and_contour_pairs(
         )
         return np.interp(coded_values, coded_levels, real_levels)
 
-    for row_number, (factor_x, factor_y) in enumerate(factor_pairs, start=1):
+    def predict_pair_grid(factor_x, factor_y):
         xx_coded, yy_coded = np.meshgrid(grid, grid)
         rows = []
         for x_value, y_value in zip(xx_coded.ravel(), yy_coded.ravel()):
@@ -2833,10 +3260,38 @@ def plot_quadratic_surface_and_contour_pairs(
             row[factor_x] = x_value
             row[factor_y] = y_value
             rows.append(row)
-
         prediction_df = pd.DataFrame(rows)
         zz = predict_quadratic_response_surface(model, prediction_df).to_numpy()
-        zz = zz.reshape(xx_coded.shape)
+        return xx_coded, yy_coded, zz.reshape(xx_coded.shape)
+
+    pair_prediction_grids = {}
+    shared_filled_levels = None
+    shared_line_levels = None
+    if combine_pairs and contours_only and shared_colorbar:
+        for factor_pair in factor_pairs:
+            pair_prediction_grids[factor_pair] = predict_pair_grid(*factor_pair)
+        shared_min = min(
+            float(np.nanmin(prediction_grid[2]))
+            for prediction_grid in pair_prediction_grids.values()
+        )
+        shared_max = max(
+            float(np.nanmax(prediction_grid[2]))
+            for prediction_grid in pair_prediction_grids.values()
+        )
+        if np.isclose(shared_min, shared_max):
+            shared_min -= 0.5
+            shared_max += 0.5
+        shared_filled_levels = np.linspace(shared_min, shared_max, 31)
+        shared_line_levels = np.linspace(shared_min, shared_max, 9)
+
+    shared_filled = None
+
+    for row_index, (factor_x, factor_y) in enumerate(factor_pairs):
+        row_number = row_index + 1
+        xx_coded, yy_coded, zz = pair_prediction_grids.get(
+            (factor_x, factor_y),
+            predict_pair_grid(factor_x, factor_y),
+        )
 
         if levels is None:
             xx_plot = xx_coded
@@ -2853,43 +3308,73 @@ def plot_quadratic_surface_and_contour_pairs(
             x_tick_labels = [f"{value:g}" for value in x_ticks]
             y_tick_labels = [f"{value:g}" for value in y_ticks]
 
-        fig = plt.figure(figsize=(15, 5.4))
-        ax_surface = fig.add_subplot(1, 2, 1, projection="3d")
-        ax_contour = fig.add_subplot(1, 2, 2)
+        if combine_pairs:
+            fig = combined_figure
+            if contours_only:
+                ax_surface = None
+                ax_contour = fig.add_subplot(combined_grid[0, row_index])
+            else:
+                ax_surface = fig.add_subplot(
+                    combined_grid[row_index, 0], projection="3d"
+                )
+                ax_contour = fig.add_subplot(combined_grid[row_index, 1])
+            colorbar_axis = None
+            if not (contours_only and shared_colorbar):
+                colorbar_axis = ax_contour.inset_axes(
+                    [1.04, 0, 0.035 if contours_only else 0.045, 1]
+                )
+        else:
+            fig = plt.figure(figsize=(15, 5.4))
+            if contours_only:
+                ax_surface = None
+                ax_contour = fig.add_subplot(1, 1, 1)
+            else:
+                ax_surface = fig.add_subplot(1, 2, 1, projection="3d")
+                ax_contour = fig.add_subplot(1, 2, 2)
+            colorbar_axis = None
 
-        surface = ax_surface.plot_surface(
-            xx_plot,
-            yy_plot,
-            zz,
-            cmap="turbo",
-            edgecolor="black",
-            linewidth=0.18,
-            antialiased=True,
-            alpha=0.96,
-        )
-        z_floor = np.nanmin(zz)
-        ax_surface.contour(
-            xx_plot,
-            yy_plot,
-            zz,
-            zdir="z",
-            offset=z_floor,
-            levels=8,
-            cmap="turbo",
-            linewidths=1,
-        )
-        ax_surface.set_zlim(z_floor, np.nanmax(zz))
-        ax_surface.set_xlabel(factor_axis_label(factor_x))
-        ax_surface.set_ylabel(factor_axis_label(factor_y))
-        ax_surface.set_zlabel(response_axis_label(model["response"], prefix=""))
-        ax_surface.xaxis.labelpad = 10
-        ax_surface.yaxis.labelpad = 10
-        ax_surface.zaxis.labelpad = 12
-        ax_surface.set_xticks(x_ticks)
-        ax_surface.set_yticks(y_ticks)
-        ax_surface.set_xticklabels(x_tick_labels)
-        ax_surface.set_yticklabels(y_tick_labels)
-        ax_surface.view_init(elev=26, azim=-135)
+        if ax_surface is not None:
+            ax_surface.plot_surface(
+                xx_plot,
+                yy_plot,
+                zz,
+                cmap="turbo",
+                edgecolor="black",
+                linewidth=0.18,
+                antialiased=True,
+                alpha=0.96,
+            )
+            z_floor = np.nanmin(zz)
+            ax_surface.contour(
+                xx_plot,
+                yy_plot,
+                zz,
+                zdir="z",
+                offset=z_floor,
+                levels=8,
+                cmap="turbo",
+                linewidths=1,
+            )
+            ax_surface.set_zlim(z_floor, np.nanmax(zz))
+            ax_surface.set_xlabel(
+                factor_axis_label(factor_x), fontsize=base_font_size
+            )
+            ax_surface.set_ylabel(
+                factor_axis_label(factor_y), fontsize=base_font_size
+            )
+            ax_surface.set_zlabel(
+                response_axis_label(model["response"], prefix=""),
+                fontsize=base_font_size,
+            )
+            ax_surface.xaxis.labelpad = 10
+            ax_surface.yaxis.labelpad = 10
+            ax_surface.zaxis.labelpad = 12
+            ax_surface.set_xticks(x_ticks)
+            ax_surface.set_yticks(y_ticks)
+            ax_surface.set_xticklabels(x_tick_labels)
+            ax_surface.set_yticklabels(y_tick_labels)
+            ax_surface.tick_params(labelsize=tick_font_size)
+            ax_surface.view_init(elev=26, azim=-135)
 
         fitted_df = model["fitted_df"].copy()
         plotted_points = fitted_df[
@@ -2905,6 +3390,7 @@ def plot_quadratic_surface_and_contour_pairs(
             else:
                 point_x = plotted_points[factor_x].map(levels[factor_x])
                 point_y = plotted_points[factor_y].map(levels[factor_y])
+        if ax_surface is not None and not plotted_points.empty:
             ax_surface.scatter(
                 point_x,
                 point_y,
@@ -2919,18 +3405,24 @@ def plot_quadratic_surface_and_contour_pairs(
             xx_plot,
             yy_plot,
             zz,
-            levels=30,
+            levels=shared_filled_levels if shared_filled_levels is not None else 30,
             cmap="turbo",
         )
         contour_lines = ax_contour.contour(
             xx_plot,
             yy_plot,
             zz,
-            levels=8,
+            levels=shared_line_levels if shared_line_levels is not None else 8,
             colors="black",
             linewidths=0.9,
         )
-        ax_contour.clabel(contour_lines, inline=True, fontsize=8, fmt="%.1f")
+        contour_format = "%.3f" if "density" in model["response"] else "%.1f"
+        ax_contour.clabel(
+            contour_lines,
+            inline=True,
+            fontsize=tick_font_size,
+            fmt=contour_format,
+        )
         if not plotted_points.empty:
             ax_contour.scatter(
                 point_x,
@@ -2940,30 +3432,107 @@ def plot_quadratic_surface_and_contour_pairs(
                 s=35,
                 zorder=3,
             )
-        ax_contour.set_xlabel(factor_axis_label(factor_x))
-        ax_contour.set_ylabel(factor_axis_label(factor_y))
+        ax_contour.set_xlabel(
+            factor_axis_label(factor_x), fontsize=base_font_size
+        )
+        ax_contour.set_ylabel(
+            factor_axis_label(factor_y), fontsize=base_font_size
+        )
         ax_contour.set_xticks(x_ticks)
         ax_contour.set_yticks(y_ticks)
         ax_contour.set_xticklabels(x_tick_labels)
         ax_contour.set_yticklabels(y_tick_labels)
-        fig.colorbar(filled, ax=ax_contour, label=response_axis_label(model["response"], prefix=""))
+        ax_contour.tick_params(labelsize=tick_font_size)
+        if combine_pairs:
+            ax_contour.set_box_aspect(1)
+            ax_contour.set_anchor("C")
+        colorbar_label = response_axis_label(model["response"], prefix="")
+        if combine_pairs:
+            if contours_only and shared_colorbar:
+                shared_filled = filled
+            else:
+                colorbar = fig.colorbar(filled, cax=colorbar_axis)
+                colorbar.set_label(colorbar_label, fontsize=base_font_size)
+                colorbar.ax.tick_params(labelsize=tick_font_size)
+            pair_title = (
+                f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}"
+            )
+            if ax_surface is not None:
+                ax_surface.set_title(
+                    f"Surface {row_number}: {pair_title}",
+                    pad=10,
+                    fontsize=panel_title_size,
+                )
+                ax_contour.set_title(
+                    f"Contour {row_number}: {pair_title}",
+                    pad=10,
+                    fontsize=panel_title_size,
+                )
+            else:
+                ax_contour.set_title(
+                    pair_title,
+                    pad=10,
+                    fontsize=panel_title_size,
+                )
+        else:
+            colorbar = fig.colorbar(filled, ax=ax_contour)
+            colorbar.set_label(colorbar_label, fontsize=base_font_size)
+            colorbar.ax.tick_params(labelsize=tick_font_size)
+            fig.suptitle(
+                experiment_title(
+                    (
+                        f"Surface and contour {row_number}: "
+                        f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}"
+                    ),
+                    experiment,
+                ),
+                fontsize=suptitle_size,
+            )
+            fig.subplots_adjust(
+                left=0.08,
+                right=0.93,
+                bottom=0.13,
+                top=0.88,
+                wspace=0.28,
+            )
+            plt.show(block=False)
 
-        fig.suptitle(
+    if combine_pairs:
+        combined_figure.suptitle(
             experiment_title(
                 (
-                    f"Surface and contour {row_number}: "
-                    f"{factor_axis_label(factor_x)} vs {factor_axis_label(factor_y)}"
+                    "Quadratic response contours"
+                    if contours_only
+                    else "Quadratic response surfaces and contours"
                 ),
                 experiment,
             ),
+            y=0.995,
+            fontsize=suptitle_size,
         )
-        fig.subplots_adjust(
-            left=0.08,
-            right=0.93,
-            bottom=0.13,
-            top=0.88,
-            wspace=0.28,
+        combined_figure.subplots_adjust(
+            left=0.06 if not contours_only else 0.055,
+            right=(
+                0.95
+                if not contours_only
+                else (0.91 if shared_colorbar else 0.97)
+            ),
+            bottom=0.04 if not contours_only else 0.13,
+            top=0.96 if not contours_only else 0.84,
         )
+        if contours_only and shared_colorbar and shared_filled is not None:
+            shared_colorbar_axis = combined_figure.add_axes(
+                [0.935, 0.16, 0.016, 0.66]
+            )
+            colorbar = combined_figure.colorbar(
+                shared_filled,
+                cax=shared_colorbar_axis,
+            )
+            colorbar.set_label(
+                response_axis_label(model["response"], prefix=""),
+                fontsize=base_font_size,
+            )
+            colorbar.ax.tick_params(labelsize=tick_font_size)
         plt.show(block=False)
 
 
@@ -3374,7 +3943,7 @@ def plot_mass_measurements(
                 fontsize=8,
             )
 
-    ax.set_xlabel("Test plate")
+    ax.set_xlabel("Specimen")
     ax.set_ylabel("Mass (g)")
     ax.set_title(experiment_title("Mass measurements", experiment))
     if "mass_std_g" in plot_df.columns and plot_df["mass_std_g"].notna().any():
@@ -3439,13 +4008,27 @@ def plot_response_measurements(
     mean_label="Mean",
     experiment=None,
     value_digits=3,
+    uncertainty_digits=None,
     extra_measurements=None,
     extra_label="extra mean",
     extra_color="#756bb1",
     show_mean_line=True,
+    show_std_errorbars=False,
+    average_bars_only=False,
+    average_bar_color="#4292c6",
+    show_overall_mean=False,
+    overall_mean_color="#1f77b4",
+    reference_value=None,
+    reference_label=None,
+    reference_color="0.35",
+    average_legend_loc="upper right",
+    average_labels_inside=False,
+    use_mean_sd_errorbars=False,
+    title_pad=None,
 ):
     """Plot repeated response measurements with their per-run mean."""
     mean_col = f"{response_name}_mean"
+    uncertainty_digits = value_digits if uncertainty_digits is None else uncertainty_digits
     std_col = f"{response_name}_std"
     plot_columns = response_columns + [mean_col]
     if std_col in response_measurements.columns:
@@ -3457,18 +4040,44 @@ def plot_response_measurements(
     )
     run_labels = plot_df.index.tolist()
     x = np.arange(len(plot_df))
-    bar_width = 0.22
+    bar_width = 0.65 if average_bars_only else 0.22
 
     fig, ax = plt.subplots(figsize=(16, 4.3))
-    offsets = np.linspace(
-        -bar_width * (len(response_columns) - 1) / 2,
-        bar_width * (len(response_columns) - 1) / 2,
-        len(response_columns),
-    )
-    colors = ["#9ecae1", "#4292c6", "#08519c", "#08306b"]
+    if average_bars_only:
+        mean_sd = plot_df[std_col].mean() if std_col in plot_df.columns else np.nan
+        unit = response_unit(response_name)
+        mean_sd_text = ""
+        if pd.notna(mean_sd):
+            mean_sd_text = f" (mean SD: {mean_sd:.{uncertainty_digits}f} {unit})"
+        errorbar_values = None
+        if std_col in plot_df.columns:
+            if use_mean_sd_errorbars and pd.notna(mean_sd):
+                errorbar_values = np.full(len(plot_df), mean_sd, dtype=float)
+            else:
+                errorbar_values = plot_df[std_col].fillna(0)
+        ax.bar(
+            x,
+            plot_df[mean_col],
+            width=bar_width,
+            yerr=errorbar_values,
+            capsize=3,
+            color=average_bar_color,
+            edgecolor="#222222",
+            linewidth=0.6,
+            label=f"{mean_label}{mean_sd_text}",
+            zorder=2,
+            error_kw={"zorder": 3},
+        )
+    else:
+        offsets = np.linspace(
+            -bar_width * (len(response_columns) - 1) / 2,
+            bar_width * (len(response_columns) - 1) / 2,
+            len(response_columns),
+        )
+        colors = ["#9ecae1", "#4292c6", "#08519c", "#08306b"]
 
-    for offset, column, color in zip(offsets, response_columns, colors):
-        ax.bar(x + offset, plot_df[column], width=bar_width, label=column, color=color)
+        for offset, column, color in zip(offsets, response_columns, colors):
+            ax.bar(x + offset, plot_df[column], width=bar_width, label=column, color=color)
 
     tick_positions = x.tolist()
     tick_labels = run_labels.copy()
@@ -3505,37 +4114,81 @@ def plot_response_measurements(
             tick_positions.extend(extra_x.tolist())
             tick_labels.extend(extra_df["run"].tolist())
 
-    if show_mean_line:
-        ax.plot(
-            x,
-            plot_df[mean_col],
-            color="#000000",
-            marker="o",
-            linewidth=2,
-            label=mean_label,
+    if show_mean_line and not average_bars_only:
+        if show_std_errorbars and std_col in plot_df.columns:
+            ax.errorbar(
+                x,
+                plot_df[mean_col],
+                yerr=plot_df[std_col].fillna(0),
+                color="#000000",
+                marker="o",
+                linewidth=2,
+                capsize=3,
+                label=mean_label,
+            )
+        else:
+            ax.plot(
+                x,
+                plot_df[mean_col],
+                color="#000000",
+                marker="o",
+                linewidth=2,
+                label=mean_label,
+            )
+
+    if show_overall_mean:
+        overall_mean = plot_df[mean_col].mean()
+        unit = response_unit(response_name)
+        ax.axhline(
+            overall_mean,
+            color=overall_mean_color,
+            linestyle="--",
+            linewidth=1.3,
+            label=f"Overall mean: {overall_mean:.{value_digits}f} {unit}",
+            zorder=1,
+        )
+
+    if reference_value is not None:
+        ax.axhline(
+            reference_value,
+            color=reference_color,
+            linestyle=":",
+            linewidth=1.3,
+            label=reference_label or f"Reference: {reference_value:.{value_digits}f}",
+            zorder=1,
         )
 
     for xi, value in zip(x, plot_df[mean_col]):
         if pd.notna(value):
+            labels_inside = average_bars_only and average_labels_inside
             ax.annotate(
                 f"{value:.{value_digits}f}",
                 xy=(xi, value),
-                xytext=(0, 6),
+                xytext=(0, -14 if labels_inside else 6),
                 textcoords="offset points",
                 ha="center",
-                va="bottom",
+                va="top" if labels_inside else "bottom",
                 fontsize=8,
+                color="white" if labels_inside else "black",
+                fontweight="bold" if labels_inside else "normal",
             )
 
-    ax.set_xlabel("Test plate")
+    ax.set_xlabel("Specimen")
     ax.set_ylabel(y_label)
-    ax.set_title(experiment_title(f"{y_label} measurements", experiment))
-    if std_col in plot_df.columns and plot_df[std_col].notna().any():
+    ax.set_title(
+        experiment_title(f"{y_label} measurements", experiment),
+        pad=title_pad,
+    )
+    if (
+        not average_bars_only
+        and std_col in plot_df.columns
+        and plot_df[std_col].notna().any()
+    ):
         measurement_uncertainty = np.sqrt((plot_df[std_col] ** 2).mean())
         ax.text(
             0.99,
             0.96,
-            f"Mean measurement uncertainty: +/-{measurement_uncertainty:.{value_digits}f}",
+            f"Mean measurement uncertainty: +/-{measurement_uncertainty:.{uncertainty_digits}f}",
             transform=ax.transAxes,
             ha="right",
             va="top",
@@ -3551,14 +4204,19 @@ def plot_response_measurements(
         ax.set_ylim(bottom=y_min, top=y_max)
     ax.set_xticks(tick_positions)
     ax.set_xticklabels(tick_labels, rotation=45)
-    ax.legend(
-        loc="upper left",
-        bbox_to_anchor=(1.01, 1.0),
-        borderaxespad=0,
-        frameon=False,
-    )
+    if average_bars_only:
+        ax.legend(loc=average_legend_loc)
+        ax.margins(x=0.025)
+    else:
+        ax.legend(
+            loc="upper left",
+            bbox_to_anchor=(1.01, 1.0),
+            borderaxespad=0,
+            frameon=False,
+        )
+    ax.set_axisbelow(True)
     ax.grid(axis="y", alpha=0.3)
-    fig.subplots_adjust(right=0.82, bottom=0.20)
+    fig.subplots_adjust(right=0.98 if average_bars_only else 0.82, bottom=0.20)
     plt.show(block=False)
 
 
@@ -3657,7 +4315,7 @@ def plot_ideal_mass_deviation(results_df, experiment=None):
         )
 
     ax.axhline(0, color="#333333", linewidth=1)
-    ax.set_xlabel("Test plate")
+    ax.set_xlabel("Specimen")
     ax.set_ylabel("Mass deviation from ideal (%)")
     ax.set_title(experiment_title("Mass deviation from ideal mass", experiment))
     ax.set_xticks(x)
@@ -3677,7 +4335,7 @@ def plot_ideal_mass_deviation(results_df, experiment=None):
     )
     ax.axhline(100, color="#333333", linestyle="-", linewidth=1.3, alpha=0.75, label="Ideal mass (100%)")
     ax.axhline(105, color="#de2d26", linestyle="--", linewidth=1.5, alpha=0.8, label="Flow rate 1.05 (105%)")
-    ax.set_xlabel("Test plate")
+    ax.set_xlabel("Specimen")
     ax.set_ylabel("Measured / ideal mass (%)")
     ax.set_title(experiment_title("Measured mass relative to ideal mass", experiment))
     ax.set_xticks(x)
@@ -3890,6 +4548,19 @@ def plot_interaction_mean_matrix(
     experiment=None,
 ):
     """Plot pairwise interaction data means in a lower-triangular matrix."""
+    response_descriptions = {
+        "mass_mean_g": ("mean mass", "Mean mass (g)"),
+        "mass_g": ("mass", "Mass (g)"),
+        "volume_cm3_mean": ("mean volume", "Mean volume (cm3)"),
+        "volume_cm3": ("volume", "Volume (cm3)"),
+        "density_g_cm3_mean": ("mean density", "Mean density (g/cm3)"),
+        "density_g_cm3": ("density", "Density (g/cm3)"),
+    }
+    response_title, response_axis_label = response_descriptions.get(
+        response,
+        (response.replace("_", " "), response.replace("_", " ")),
+    )
+
     if factor_cols is None:
         factor_cols = [
             col for col in matrix.columns
@@ -3905,80 +4576,52 @@ def plot_interaction_mean_matrix(
     y_min = response_values.min()
     y_max = response_values.max()
     y_padding = max(0.08 * (y_max - y_min), 0.05)
-    panel_count = factor_count - 1
+    factor_pairs = list(itertools.combinations(factor_cols, 2))
+    column_count = min(5, len(factor_pairs))
+    row_count = int(np.ceil(len(factor_pairs) / column_count))
 
     fig, axes = plt.subplots(
-        panel_count,
-        panel_count,
-        figsize=(2.55 * panel_count, 2.15 * panel_count),
+        row_count,
+        column_count,
+        figsize=(3.0 * column_count, 2.45 * row_count),
         sharey=True,
+        squeeze=False,
     )
-    if panel_count == 1:
-        axes = np.array([[axes]])
 
     line_styles = {
-        -1: {"color": "#1f77b4", "marker": "o", "label": "line factor -"},
-        1: {"color": "#ff7f0e", "marker": "s", "label": "line factor +"},
+        -1: {"color": "#1f77b4", "marker": "o", "label": "first factor -"},
+        1: {"color": "#ff7f0e", "marker": "s", "label": "first factor +"},
     }
 
-    for row_index in range(panel_count):
-        factor_line = factor_cols[row_index]
-        for col_index in range(panel_count):
-            ax = axes[row_index, col_index]
-            factor_x = factor_cols[col_index + 1]
-
-            if col_index < row_index:
-                ax.axis("off")
-                continue
-
-            for line_level, style in line_styles.items():
-                subset = plot_df[plot_df[factor_line] == line_level]
-                means = subset.groupby(factor_x)[response].mean().reindex([-1, 1])
-                if means.notna().any():
-                    ax.plot(
-                        [-1, 1],
-                        means,
-                        color=style["color"],
-                        marker=style["marker"],
-                        linewidth=1.2,
-                        markersize=4,
-                        label=style["label"],
-                    )
-
-            ax.set_xticks([-1, 1])
-            ax.set_xticklabels(["-", "+"])
-            ax.set_ylim(y_min - y_padding, y_max + y_padding)
-            ax.grid(alpha=0.25)
-            if row_index == 0:
-                ax.set_title(
-                    factor_x,
-                    fontsize=9,
-                    pad=10,
-                    color=FACTOR_COLORS.get(factor_x, "#333333"),
+    axes_flat = axes.ravel()
+    for panel_index, (factor_line, factor_x) in enumerate(factor_pairs):
+        ax = axes_flat[panel_index]
+        for line_level, style in line_styles.items():
+            subset = plot_df[plot_df[factor_line] == line_level]
+            means = subset.groupby(factor_x)[response].mean().reindex([-1, 1])
+            if means.notna().any():
+                ax.plot(
+                    [-1, 1],
+                    means,
+                    color=style["color"],
+                    marker=style["marker"],
+                    linewidth=1.2,
+                    markersize=4,
+                    label=style["label"],
                 )
-            if col_index == panel_count - 1:
-                ax.text(
-                    1.08,
-                    0.5,
-                    factor_line,
-                    transform=ax.transAxes,
-                    rotation=0,
-                    ha="left",
-                    va="center",
-                    fontsize=9,
-                    color=FACTOR_COLORS.get(factor_line, "#333333"),
-                    clip_on=False,
-                )
-            if row_index == panel_count - 1:
-                ax.set_xlabel(
-                    factor_x,
-                    fontsize=9,
-                    color=FACTOR_COLORS.get(factor_x, "#333333"),
-                )
-            if col_index == row_index:
-                ax.tick_params(axis="y", labelleft=True)
-            else:
-                ax.tick_params(axis="y", labelleft=False)
+
+        ax.set_xticks([-1, 1])
+        ax.set_xticklabels(["-", "+"])
+        ax.set_ylim(y_min - y_padding, y_max + y_padding)
+        ax.set_title(
+            f"{factor_line} x\n{factor_x}",
+            fontsize=8.5,
+            pad=7,
+        )
+        ax.grid(alpha=0.25)
+
+    for ax in axes_flat[len(factor_pairs):]:
+        ax.set_visible(False)
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
     if handles:
@@ -3986,18 +4629,132 @@ def plot_interaction_mean_matrix(
             handles[:2],
             labels[:2],
             loc="upper right",
-            bbox_to_anchor=(0.90, 0.965),
+            bbox_to_anchor=(0.985, 0.985),
             frameon=False,
         )
 
-    fig.suptitle(experiment_title("Interaction plot of data means", experiment))
+    fig.supylabel(response_axis_label, x=0.015)
+    fig.supxlabel("Second factor coded level", y=0.025)
+    fig.suptitle(
+        experiment_title(f"Interaction plot of {response_title}", experiment)
+    )
     fig.subplots_adjust(
-        left=0.08,
-        right=0.91,
-        bottom=0.08,
-        top=0.88,
-        wspace=0.18,
-        hspace=0.30,
+        left=0.06,
+        right=0.985,
+        bottom=0.09,
+        top=0.86,
+        wspace=0.20,
+        hspace=0.42,
+    )
+    plt.show(block=False)
+
+
+def plot_three_level_interaction_means(
+    matrix,
+    response="mass_mean_g",
+    factor_cols=None,
+    levels=None,
+    experiment=None,
+    figsize=None,
+    square_axes=False,
+):
+    """Plot classical three-level interaction charts of observed data means."""
+    if factor_cols is None:
+        factor_cols = [
+            column
+            for column in matrix.columns
+            if column not in ["Run", "run", response]
+        ]
+
+    factor_pairs = list(itertools.combinations(factor_cols, 2))
+    if not factor_pairs:
+        raise ValueError("At least two factors are required for an interaction plot.")
+
+    plot_df = matrix.dropna(subset=[response]).copy()
+    response_values = plot_df[response].dropna()
+    y_span = response_values.max() - response_values.min()
+    y_padding = max(0.08 * y_span, 0.01)
+
+    column_count = min(3, len(factor_pairs))
+    row_count = int(np.ceil(len(factor_pairs) / column_count))
+    fig, axes = plt.subplots(
+        row_count,
+        column_count,
+        figsize=figsize or (5.1 * column_count, 4.3 * row_count),
+        sharey=True,
+        squeeze=False,
+    )
+    axes_flat = axes.ravel()
+    trace_styles = {
+        -1: {"color": "#2166ac", "marker": "o", "label": "low"},
+        0: {"color": "#666666", "marker": "D", "label": "center"},
+        1: {"color": "#b2182b", "marker": "s", "label": "high"},
+    }
+
+    for axis, (factor_x, factor_trace) in zip(axes_flat, factor_pairs):
+        means = (
+            plot_df.groupby([factor_x, factor_trace])[response]
+            .mean()
+            .unstack(factor_trace)
+            .reindex(index=[-1, 0, 1], columns=[-1, 0, 1])
+        )
+        x_level_map = levels.get(factor_x, {}) if levels else {}
+        x_values = np.array([
+            x_level_map.get(level, level)
+            for level in [-1, 0, 1]
+        ], dtype=float)
+
+        for trace_level, style in trace_styles.items():
+            trace_means = means[trace_level]
+            available = trace_means.notna().to_numpy()
+            if not available.any():
+                continue
+            trace_level_map = levels.get(factor_trace, {}) if levels else {}
+            trace_value = trace_level_map.get(trace_level, trace_level)
+            axis.plot(
+                x_values[available],
+                trace_means.to_numpy(dtype=float)[available],
+                color=style["color"],
+                marker=style["marker"],
+                linewidth=1.6,
+                markersize=5,
+                label=f"{style['label']} ({trace_value:g})",
+            )
+
+        axis.set_title(
+            f"{factor_axis_label(factor_x)} x {factor_axis_label(factor_trace)}"
+        )
+        axis.set_xlabel(factor_axis_label(factor_x))
+        axis.set_xticks(x_values)
+        axis.set_ylim(
+            response_values.min() - y_padding,
+            response_values.max() + y_padding,
+        )
+        axis.legend(
+            title=factor_axis_label(factor_trace),
+            frameon=False,
+            fontsize=max(9, plt.rcParams["font.size"] - 1),
+            title_fontsize=plt.rcParams["font.size"],
+        )
+        axis.grid(alpha=0.25)
+        if square_axes:
+            axis.set_box_aspect(1)
+
+    for axis in axes_flat[len(factor_pairs):]:
+        axis.set_visible(False)
+
+    fig.supylabel(response_axis_label(response, prefix="Mean"), x=0.01)
+    fig.suptitle(
+        experiment_title("Classical interaction plot of data means", experiment),
+        y=0.98,
+    )
+    fig.subplots_adjust(
+        left=0.07,
+        right=0.985,
+        bottom=0.15 if square_axes else 0.13,
+        top=0.82 if row_count == 1 else 0.90,
+        wspace=0.30 if square_axes else 0.25,
+        hspace=0.42,
     )
     plt.show(block=False)
 
@@ -4066,7 +4823,11 @@ def compute_interaction_effects(matrix, response="mass_mean_g", generators=None)
     )
 
 
-def plot_interaction_effects(interaction_effects, experiment=None):
+def plot_interaction_effects(
+    interaction_effects,
+    experiment=None,
+    response="mass_mean_g",
+):
     if isinstance(interaction_effects, pd.DataFrame):
         interaction_effects_df = interaction_effects.copy()
     else:
@@ -4095,8 +4856,14 @@ def plot_interaction_effects(interaction_effects, experiment=None):
     )
     plt.axhline(0, color="black", linewidth=1)
 
-    plt.ylabel("Effect")
-    plt.title(experiment_title("Interaction effects plot", experiment))
+    is_mean_response = "_mean" in response
+    response_name = response_name_label(response)
+    axis_prefix = "Effect on mean" if is_mean_response else "Effect on"
+    title_response = f"mean {response_name}" if is_mean_response else response_name
+    plt.ylabel(response_axis_label(response, prefix=axis_prefix))
+    plt.title(
+        experiment_title(f"Interaction effects on {title_response}", experiment)
+    )
     plt.xticks(rotation=35, ha="right")
 
     legend_handles = [

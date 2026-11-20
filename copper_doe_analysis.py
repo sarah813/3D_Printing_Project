@@ -5,6 +5,7 @@ from statistics import NormalDist
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 
 
 FACTOR_COLORS = {
@@ -23,6 +24,72 @@ FACTOR_SHORT_NAMES = {
     "D_speed_mm_s": "D",
     "E_infill_percent": "E",
 }
+
+
+FACTOR_LABELS = {
+    "A_layer_height_mm": "Layer height (mm)",
+    "B_flow_ratio": "Flow ratio (-)",
+    "C_nozzle_temp_C": r"Nozzle temperature ($^\circ$C)",
+    "D_speed_mm_s": "Print speed (mm/s)",
+    "E_infill_percent": "Infill (%)",
+}
+
+
+INTERACTION_FACTOR_LABELS = {
+    "A_layer_height_mm": "A_layer_height (mm)",
+    "B_flow_ratio": "B_flow_ratio",
+    "C_nozzle_temp_C": "C_nozzle_temp (\N{DEGREE SIGN}C)",
+    "D_speed_mm_s": "D_speed (mm/s)",
+    "E_infill_percent": "E_infill (%)",
+}
+
+
+RESPONSE_LABELS = {
+    "weight_g": "Mass (g)",
+    "mass_g": "Mass (g)",
+    "weight_in_air_g": "Mass in air (g)",
+    "weight_in_water_g": "Mass in water (g)",
+    "volume_cm3": "Volume (cm3)",
+    "density_g_cm3": "Density (g/cm3)",
+    "relative_density_percent": "Reported Archimedes percentage (%)",
+    "porosity_percent": "Porosity (%)",
+    "geometric_density_g_cm3": "Geometric density (g/cm3)",
+    "avg_density_g_cm3": "Average density (g/cm3)",
+    "avg_relative_density_percent": "Average reported percentage (%)",
+    "sintered_density_g_cm3": "Sintered density (g/cm3)",
+}
+
+
+RESPONSE_UNITS = {
+    "weight_g": "g",
+    "mass_g": "g",
+    "weight_in_air_g": "g",
+    "weight_in_water_g": "g",
+    "volume_cm3": "cm3",
+    "density_g_cm3": "g/cm3",
+    "relative_density_percent": "%",
+    "porosity_percent": "%",
+    "geometric_density_g_cm3": "g/cm3",
+    "avg_density_g_cm3": "g/cm3",
+    "avg_relative_density_percent": "%",
+    "sintered_density_g_cm3": "g/cm3",
+}
+
+
+def response_label(response):
+    """Human-readable response label for plots."""
+    return RESPONSE_LABELS.get(response, response)
+
+
+def response_unit(response):
+    """Unit string for a response, if known."""
+    return RESPONSE_UNITS.get(response, "")
+
+
+def residual_label(response):
+    """Residual axis label with response unit when available."""
+    unit = response_unit(response)
+    return f"Residual ({unit})" if unit else "Residual"
 
 
 def factor_color_for_term(term):
@@ -163,6 +230,80 @@ def build_copper_term_significance_table(model, include_intercept=False):
     ])
 
 
+def build_copper_term_anova_table(model):
+    """Build partial term-wise ANOVA tests by dropping one term at a time.
+
+    Each term sum of squares is the increase in residual sum of squares when
+    that term is removed while all other terms remain in the model. These are
+    Type III-style partial tests and therefore need not add to the model sum of
+    squares for a non-orthogonal design.
+    """
+    response = model["response"]
+    fitted_df = model["fitted_df"]
+    terms = list(model["terms"])
+    y = fitted_df[response].to_numpy(dtype=float)
+    full_residual = fitted_df["residual"].to_numpy(dtype=float)
+    full_residual_ss = float(np.sum(full_residual**2))
+    full_rank = int(model["rank"])
+    residual_df = int(model["residual_df"])
+    residual_ms = (
+        full_residual_ss / residual_df
+        if residual_df > 0
+        else np.nan
+    )
+
+    rows = []
+    for term in terms:
+        reduced_terms = [candidate for candidate in terms if candidate != term]
+        reduced_matrix = build_copper_model_matrix(fitted_df, reduced_terms)
+        reduced_x = reduced_matrix.to_numpy(dtype=float)
+        reduced_coefficients, _, reduced_rank, _ = np.linalg.lstsq(
+            reduced_x,
+            y,
+            rcond=None,
+        )
+        reduced_residual = y - reduced_x @ reduced_coefficients
+        reduced_residual_ss = float(np.sum(reduced_residual**2))
+
+        term_df = full_rank - int(reduced_rank)
+        partial_ss = max(reduced_residual_ss - full_residual_ss, 0.0)
+        mean_sq = partial_ss / term_df if term_df > 0 else np.nan
+        f_value = (
+            mean_sq / residual_ms
+            if term_df > 0 and pd.notna(residual_ms) and residual_ms > 0
+            else np.nan
+        )
+        try:
+            from scipy import stats
+
+            p_value = (
+                stats.f.sf(f_value, term_df, residual_df)
+                if pd.notna(f_value) and residual_df > 0
+                else np.nan
+            )
+        except Exception:
+            p_value = np.nan
+
+        rows.append({
+            "source": term,
+            "df": term_df,
+            "sum_sq": partial_ss,
+            "mean_sq": mean_sq,
+            "F_value": f_value,
+            "p_value": p_value,
+        })
+
+    rows.append({
+        "source": "Residual",
+        "df": residual_df,
+        "sum_sq": full_residual_ss,
+        "mean_sq": residual_ms,
+        "F_value": np.nan,
+        "p_value": np.nan,
+    })
+    return pd.DataFrame(rows)
+
+
 def build_copper_anova_table(model):
     """Build an overall ANOVA table for a fitted copper regression model."""
     response = model["response"]
@@ -206,37 +347,80 @@ def build_copper_anova_table(model):
     })
 
 
-def plot_copper_anova(anova_table, response="weight_g", title=None):
-    """Plot explained and residual sum of squares for a copper model."""
+def plot_copper_anova(
+    anova_table,
+    response="weight_g",
+    title=None,
+    variation_percent=False,
+):
+    """Plot explained and residual variation for a copper model."""
     plot_df = anova_table[anova_table["source"].isin(["Model", "Residual"])].copy()
     if plot_df.empty:
         return
 
-    fig, ax = plt.subplots(figsize=(6.4, 3.8))
-    ax.bar(
-        plot_df["source"],
-        plot_df["sum_sq"],
-        color=["#4c78a8" if source == "Model" else "#bbbbbb" for source in plot_df["source"]],
-    )
-    for _, row in plot_df.iterrows():
-        ax.text(
-            row["source"],
-            row["sum_sq"],
-            f"{row['sum_sq']:.3g}",
+    if variation_percent:
+        total_sum_sq = plot_df["sum_sq"].sum()
+        if not np.isfinite(total_sum_sq) or total_sum_sq <= 0:
+            return
+        plot_df["plot_value"] = 100.0 * plot_df["sum_sq"] / total_sum_sq
+        plot_df["plot_label"] = plot_df["source"].map({
+            "Model": "Explained by model",
+            "Residual": "Residual",
+        })
+        colors = [
+            "#4f9275" if source == "Model" else "#e07a3f"
+            for source in plot_df["source"]
+        ]
+        value_format = lambda value: f"{value:.1f}%"
+        y_label = "Share of total density variation (%)"
+    else:
+        plot_df["plot_value"] = plot_df["sum_sq"]
+        plot_df["plot_label"] = plot_df["source"]
+        colors = [
+            "#4c78a8" if source == "Model" else "#bbbbbb"
+            for source in plot_df["source"]
+        ]
+        value_format = lambda value: f"{value:.3g}"
+        unit = response_unit(response)
+        y_label = f"Sum of squares ({unit}^2)" if unit else "Sum of squares"
+
+    fig, ax = plt.subplots(figsize=(8.5, 5.2))
+    bars = ax.bar(plot_df["plot_label"], plot_df["plot_value"], color=colors)
+    for bar, value in zip(bars, plot_df["plot_value"]):
+        ax.annotate(
+            value_format(value),
+            (bar.get_x() + bar.get_width() / 2, value),
+            xytext=(0, -8),
+            textcoords="offset points",
             ha="center",
-            va="bottom",
-            fontsize=9,
+            va="top",
+            fontsize=14,
+            fontweight="bold",
+            color=bar.get_facecolor(),
+            bbox={
+                "facecolor": "white",
+                "edgecolor": "none",
+                "alpha": 0.78,
+                "pad": 0.25,
+            },
+            zorder=4,
         )
 
-    y_label = "Sum of squares (g^2)" if response in {"weight_g", "mass_g"} else "Sum of squares"
-    ax.set_ylabel(y_label)
-    ax.set_title(title or f"Copper DSD - ANOVA ({response})")
+    ax.set_ylabel(y_label, fontsize=14)
+    ax.set_title(
+        title or f"Copper DSD - ANOVA for {response_label(response)}",
+        pad=14,
+        fontsize=17,
+    )
+    ax.tick_params(axis="both", labelsize=13)
+    if variation_percent:
+        ax.set_ylim(0, max(105, plot_df["plot_value"].max() * 1.15))
     ax.grid(axis="y", alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
 
 
-def plot_copper_pareto(model, title=None, alpha=0.1):
+def plot_copper_pareto(model, title=None, alpha=0.05, secondary_alpha=None):
     """Pareto chart of standardized effects, falling back to coefficients."""
     effect_df = model["coefficient_df"].query("term != 'Intercept'").copy()
     use_standardized = effect_df["absolute_standardized_effect"].notna().any()
@@ -257,7 +441,9 @@ def plot_copper_pareto(model, title=None, alpha=0.1):
     fig, ax = plt.subplots(figsize=(9, 4.8))
     ax.barh(effect_df["term"], effect_df[value_col], color=colors)
     ax.set_xlabel(x_label)
-    ax.set_title(title or f"Copper DSD - Pareto chart ({model['response']})")
+    ax.set_title(
+        title or f"Copper DSD - Pareto chart for {response_label(model['response'])}"
+    )
     ax.grid(axis="x", alpha=0.25)
     if use_standardized and model["residual_df"] > 0:
         try:
@@ -270,10 +456,31 @@ def plot_copper_pareto(model, title=None, alpha=0.1):
                 linewidth=1.5,
                 label=f"alpha={alpha:g} threshold",
             )
-            ax.legend(loc="lower right", frameon=False)
+            if secondary_alpha is not None:
+                secondary_critical_value = stats.t.ppf(
+                    1 - secondary_alpha / 2,
+                    df=model["residual_df"],
+                )
+                ax.axvline(
+                    secondary_critical_value,
+                    color="#333333",
+                    linewidth=1.5,
+                    linestyle="--",
+                    label=f"alpha={secondary_alpha:g} threshold",
+                )
+            ax.legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, -0.16),
+                ncol=1,
+                frameon=True,
+                facecolor="white",
+                framealpha=0.92,
+                edgecolor="#d0d0d0",
+            )
         except Exception:
             pass
     plt.tight_layout()
+    fig.subplots_adjust(bottom=0.28)
     plt.show(block=False)
 
 
@@ -314,9 +521,14 @@ def plot_copper_normal_effects(model, half_normal=False, title=None):
                     textcoords="offset points", fontsize=8)
     ax.axhline(0, color="#333333", linewidth=1)
     ax.set_xlabel(x_label)
-    ax.set_ylabel("Absolute effect" if half_normal else "Signed effect")
+    unit = response_unit(model["response"])
+    effect_label = "Absolute effect" if half_normal else "Signed effect"
+    if unit:
+        effect_label = f"{effect_label} ({unit})"
+    ax.set_ylabel(effect_label)
     ax.set_title(title or (
-        f"Copper DSD - {'Half-normal' if half_normal else 'Normal'} plot ({model['response']})"
+        f"Copper DSD - {'Half-normal' if half_normal else 'Normal'} plot for "
+        f"{response_label(model['response'])}"
     ))
     ax.grid(alpha=0.25)
     legend_handles = [
@@ -338,7 +550,13 @@ def plot_copper_normal_effects(model, half_normal=False, title=None):
     plt.show(block=False)
 
 
-def plot_copper_main_effects(coded_with_response_df, levels, response, factor_names):
+def plot_copper_main_effects(
+    coded_with_response_df,
+    levels,
+    response,
+    factor_names,
+    max_columns=None,
+):
     """Plot raw response means at low, center, and high factor levels."""
     plotted_means = []
     for factor in factor_names:
@@ -354,14 +572,17 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
     y_max = max(plotted_means)
     y_padding = 0.12 * (y_max - y_min) if y_max > y_min else 0.1
 
+    n_columns = min(max_columns or len(factor_names), len(factor_names))
+    n_rows = int(np.ceil(len(factor_names) / n_columns))
     fig, axes = plt.subplots(
-        1,
-        len(factor_names),
-        figsize=(3.2 * len(factor_names) + 1.0, 4.2),
+        n_rows,
+        n_columns,
+        figsize=(4.3 * n_columns + 1.0, 5.0 * n_rows),
         sharey=True,
+        squeeze=False,
     )
-    if len(factor_names) == 1:
-        axes = [axes]
+    axes = axes.ravel()
+    response_label_y = -0.23 if n_rows > 1 else -0.32
 
     for ax, factor in zip(axes, factor_names):
         means = (
@@ -375,9 +596,10 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
         x_values = [levels[factor][coded] for coded in [-1, 0, 1]]
         ax.set_xticks(x_values)
         ax.set_xticklabels([f"{value:g}" for value in x_values])
-        ax.set_title(factor)
-        ax.set_xlabel("Real factor value")
-        ax.set_ylabel(response)
+        factor_label = FACTOR_LABELS.get(factor, factor)
+        ax.set_title(factor_label.split(" (")[0], fontsize=15)
+        ax.set_xlabel(factor_label, fontsize=14)
+        ax.set_ylabel(response_label(response), fontsize=14)
         ax.set_ylim(y_min - y_padding, y_max + y_padding)
         y_bottom, y_top = ax.get_ylim()
         y_safe = 0.09 * (y_top - y_bottom)
@@ -432,7 +654,7 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
                 transform=ax.get_yaxis_transform(),
                 ha=ha,
                 va=va,
-                fontsize=8,
+                fontsize=13,
                 color=factor_color,
                 clip_on=True,
                 bbox={
@@ -443,26 +665,38 @@ def plot_copper_main_effects(coded_with_response_df, levels, response, factor_na
                 },
             )
 
+        ax.tick_params(axis="both", labelsize=12)
         ax.tick_params(axis="y", labelleft=True)
+        ax.set_box_aspect(1)
         ax.grid(alpha=0.25)
         ax.text(
             0.5,
-            -0.26,
-            f"Response range: Δ = {response_diff:.2f} g",
+            response_label_y,
+            (
+                rf"Response range: $\Delta$ = {response_diff:.2f} "
+                f"{response_unit(response)}"
+            ).rstrip(),
             transform=ax.transAxes,
             ha="center",
             va="top",
-            fontsize=9,
+            fontsize=13,
             color=factor_color,
         )
 
-    fig.suptitle(f"Copper DSD - Main effects ({response})")
+    for ax in axes[len(factor_names):]:
+        ax.set_visible(False)
+
+    fig.suptitle(
+        f"Copper DSD - Main effects on {response_label(response)}",
+        fontsize=18,
+    )
     fig.subplots_adjust(
         left=0.06,
         right=0.985,
-        bottom=0.24,
-        top=0.82,
-        wspace=0.35,
+        bottom=0.16 if n_rows > 1 else 0.29,
+        top=0.90 if n_rows > 1 else 0.82,
+        wspace=0.15,
+        hspace=0.45 if n_rows > 1 else 0.2,
     )
     plt.show(block=False)
 
@@ -479,15 +713,28 @@ def plot_copper_curvature(model):
     fig, ax = plt.subplots(figsize=(7, 4))
     ax.bar(curvature_df["term"], curvature_df["coefficient"], color=colors)
     ax.axhline(0, color="#333333", linewidth=1)
-    ax.set_ylabel(f"Quadratic coefficient on {model['response']}")
-    ax.set_title(f"Copper DSD - Individual curvature terms ({model['response']})")
+    unit = response_unit(model["response"])
+    y_label = "Quadratic coefficient"
+    if unit:
+        y_label = f"{y_label} ({unit})"
+    ax.set_ylabel(y_label)
+    ax.set_title(
+        "Copper DSD - Individual curvature terms for "
+        f"{response_label(model['response'])}"
+    )
     ax.tick_params(axis="x", rotation=35)
     ax.grid(axis="y", alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
 
 
-def plot_copper_interactions(coded_with_response_df, response, interaction_pairs):
+def plot_copper_interactions(
+    coded_with_response_df,
+    response,
+    interaction_pairs,
+    figsize=None,
+    font_size=None,
+):
     """Plot raw means for selected physically plausible interactions."""
     plot_df = coded_with_response_df.dropna(subset=[response]).copy()
     if plot_df.empty:
@@ -504,43 +751,98 @@ def plot_copper_interactions(coded_with_response_df, response, interaction_pairs
         return
 
     n_pairs = len(valid_pairs)
-    fig, axes = plt.subplots(
-        1,
-        n_pairs,
-        figsize=(4.2 * n_pairs, 5.4),
-        sharey=True,
-    )
-    if n_pairs == 1:
-        axes = [axes]
+    if n_pairs > 3:
+        fig = plt.figure(figsize=figsize or (13.2, 9.5))
+        grid = fig.add_gridspec(2, 6)
+        spans = [(0, 0, 2), (0, 2, 4), (0, 4, 6)]
+        remaining_count = n_pairs - 3
+        if remaining_count == 1:
+            spans.append((1, 2, 4))
+        else:
+            spans.extend([(1, 1, 3), (1, 3, 5)])
+
+        axes = []
+        for row, column_start, column_stop in spans[:n_pairs]:
+            axes.append(
+                fig.add_subplot(
+                    grid[row, column_start:column_stop],
+                    sharey=axes[0] if axes else None,
+                )
+            )
+    else:
+        fig, axes = plt.subplots(
+            1,
+            n_pairs,
+            figsize=figsize or (4.2 * n_pairs, 5.4),
+            sharey=True,
+        )
+        if n_pairs == 1:
+            axes = [axes]
 
     for ax, (factor_x, factor_line) in zip(axes, valid_pairs):
+        factor_x_label = INTERACTION_FACTOR_LABELS.get(factor_x, factor_x)
+        factor_line_label = INTERACTION_FACTOR_LABELS.get(factor_line, factor_line)
         for line_level in [-1, 0, 1]:
             subset = plot_df[plot_df[factor_line] == line_level]
             means = subset.groupby(factor_x)[response].mean().reindex([-1, 0, 1])
             if means.notna().any():
-                ax.plot([-1, 0, 1], means, marker="o", label=f"{factor_line}: {line_level}")
+                ax.plot(
+                    [-1, 0, 1],
+                    means,
+                    marker="o",
+                    label=f"{factor_line_label}: {line_level}",
+                )
 
-        ax.set_xlabel(f"{factor_x} coded level")
-        ax.set_title(f"{factor_x} x {factor_line}")
+        ax.set_xlabel(
+            f"{factor_x_label} coded level",
+            fontsize=font_size if font_size is not None else None,
+        )
+        ax.set_title(
+            f"{factor_x_label} x {factor_line_label}",
+            fontsize=font_size + 1 if font_size is not None else None,
+        )
         ax.set_xticks([-1, 0, 1])
+        if font_size is not None:
+            ax.tick_params(axis="both", labelsize=font_size - 1)
         ax.grid(alpha=0.25)
         ax.legend(
             loc="upper center",
             bbox_to_anchor=(0.5, -0.30),
             frameon=False,
-            fontsize=10,
+            fontsize=font_size - 1 if font_size is not None else 10,
             ncol=1,
         )
 
-    axes[0].set_ylabel(response)
-    fig.suptitle(f"Copper DSD - Selected interaction plots ({response})")
-    fig.subplots_adjust(
-        left=0.055,
-        right=0.99,
-        bottom=0.32,
-        top=0.86,
-        wspace=0.25,
+    axes[0].set_ylabel(
+        response_label(response),
+        fontsize=font_size if font_size is not None else None,
     )
+    if n_pairs > 3:
+        axes[3].set_ylabel(
+            response_label(response),
+            fontsize=font_size if font_size is not None else None,
+        )
+    fig.suptitle(
+        f"Copper DSD - Selected interaction plots for {response_label(response)}",
+        fontsize=font_size + 3 if font_size is not None else None,
+    )
+    if n_pairs > 3:
+        fig.subplots_adjust(
+            left=0.07,
+            right=0.985,
+            bottom=0.16,
+            top=0.88,
+            wspace=0.55,
+            hspace=0.72,
+        )
+    else:
+        fig.subplots_adjust(
+            left=0.055,
+            right=0.99,
+            bottom=0.32,
+            top=0.86,
+            wspace=0.25,
+        )
     plt.show(block=False)
 
 
@@ -674,7 +976,7 @@ def plot_copper_measurement_correlation(
     ax_offset.grid(axis="y", alpha=0.25)
     ax_offset.legend(frameon=False, fontsize=8)
 
-    fig.suptitle("Copper repeated-weight measurements")
+    fig.suptitle("Copper repeated mass measurements")
     plt.tight_layout()
     plt.show(block=False)
     return paired
@@ -695,6 +997,8 @@ def plot_copper_weight_measurements(
     reference_weight_g=None,
     reference_label="m_geom",
     show_weight_line=True,
+    measurement_indices=None,
+    title="Copper DSD - Mass measurements",
 ):
     """Plot individual weighings, print repeats, and the mean for each copper run."""
     df = measurement_table.copy()
@@ -794,6 +1098,18 @@ def plot_copper_weight_measurements(
         axis=1,
     )
     max_measurements = max(original_plot_df["_measurements"].map(len), default=1)
+    if measurement_indices is None:
+        plotted_measurement_indices = list(range(max_measurements))
+    else:
+        plotted_measurement_indices = sorted(
+            {
+                int(index)
+                for index in measurement_indices
+                if 0 <= int(index) < max_measurements
+            }
+        )
+        if not plotted_measurement_indices:
+            raise ValueError("measurement_indices does not select an available measurement")
 
     fig, ax = plt.subplots(figsize=(16, 4.3))
     if reference_weight_g is not None and pd.notna(reference_weight_g):
@@ -820,15 +1136,16 @@ def plot_copper_weight_measurements(
 
     measurement_colors = ["#9ecae1", "#6baed6", "#3182bd", "#08519c"]
     measurement_offsets = (
-        np.arange(max_measurements, dtype=float) - (max_measurements - 1) / 2
+        np.arange(len(plotted_measurement_indices), dtype=float)
+        - (len(plotted_measurement_indices) - 1) / 2
     ) * bar_width
-    for measurement_index in range(max_measurements):
+    for plotted_index, measurement_index in enumerate(plotted_measurement_indices):
         measurement_rows = original_plot_df[
             original_plot_df["_measurements"].map(len) > measurement_index
         ]
         measurement_x = (
             measurement_rows["_plot_x"].to_numpy(dtype=float)
-            + measurement_offsets[measurement_index]
+            + measurement_offsets[plotted_index]
         )
         measurement_y = measurement_rows["_measurements"].map(
             lambda values: values[measurement_index]
@@ -861,7 +1178,7 @@ def plot_copper_weight_measurements(
             ]
             correction_x = (
                 correction_rows["_plot_x"].to_numpy(dtype=float)
-                + measurement_offsets[measurement_index]
+                + measurement_offsets[plotted_index]
             )
             correction_bottom = correction_rows["_measurements"].map(
                 lambda values: values[measurement_index]
@@ -977,8 +1294,8 @@ def plot_copper_weight_measurements(
         )
 
     ax.set_xlabel("Test plate")
-    ax.set_ylabel("Weight (g)")
-    ax.set_title("Copper DSD - Weight measurements")
+    ax.set_ylabel("Mass (g)")
+    ax.set_title(title)
     ax.set_xticks(tick_positions)
     ax.set_xticklabels(tick_labels, rotation=45)
     if y_min is not None or y_max is not None:
@@ -1001,9 +1318,11 @@ def plot_copper_actual_vs_predicted(model):
     low = min(fitted_df[response].min(), fitted_df["predicted_response"].min())
     high = max(fitted_df[response].max(), fitted_df["predicted_response"].max())
     ax.plot([low, high], [low, high], color="#333333", linestyle="--")
-    ax.set_xlabel(f"Actual {response}")
-    ax.set_ylabel(f"Predicted {response}")
-    ax.set_title(f"Copper DSD - Actual vs predicted ({response})")
+    ax.set_xlabel(f"Actual {response_label(response)}")
+    ax.set_ylabel(f"Predicted {response_label(response)}")
+    ax.set_title(
+        f"Copper DSD - Actual vs predicted {response_label(response)}"
+    )
     ax.grid(alpha=0.25)
     plt.tight_layout()
     plt.show(block=False)
@@ -1017,8 +1336,8 @@ def plot_copper_residuals(model, factor_names):
     fig, axes = plt.subplots(1, 3, figsize=(14, 4))
     axes[0].scatter(fitted_df["predicted_response"], residual, color="#08519c")
     axes[0].axhline(0, color="#333333", linewidth=1)
-    axes[0].set_xlabel("Predicted response")
-    axes[0].set_ylabel("Residual")
+    axes[0].set_xlabel(f"Predicted {response_label(model['response'])}")
+    axes[0].set_ylabel(residual_label(model["response"]))
     axes[0].set_title("Residuals vs predicted")
 
     sorted_residual = np.sort(residual.to_numpy(dtype=float))
@@ -1037,7 +1356,10 @@ def plot_copper_residuals(model, factor_names):
 
     for ax in axes:
         ax.grid(alpha=0.25)
-    fig.suptitle(f"Copper DSD - Residual diagnostics ({model['response']})")
+    fig.suptitle(
+        "Copper DSD - Residual diagnostics for "
+        f"{response_label(model['response'])}"
+    )
     plt.tight_layout()
     plt.show(block=False)
 
@@ -1048,16 +1370,28 @@ def plot_copper_residuals(model, factor_names):
         ax.scatter(fitted_df[factor], residual, color=FACTOR_COLORS.get(factor, "#08519c"))
         ax.axhline(0, color="#333333", linewidth=1)
         ax.set_xlabel(f"{factor} coded")
-        ax.set_ylabel("Residual")
+        ax.set_ylabel(residual_label(model["response"]))
         ax.grid(alpha=0.25)
-    fig.suptitle(f"Copper DSD - Residuals vs factors ({model['response']})")
+    fig.suptitle(
+        "Copper DSD - Residuals vs factors for "
+        f"{response_label(model['response'])}"
+    )
     plt.tight_layout()
     plt.show(block=False)
 
 
-def plot_copper_contours(model, levels, factor_pairs, fixed_level=0):
+def plot_copper_contours(
+    model,
+    levels,
+    factor_pairs,
+    fixed_level=0,
+    figsize=None,
+    font_size=14,
+):
     """Contour plots for selected two-factor slices of a reduced final model."""
     terms = model["terms"]
+    response = model["response"]
+    response_text = response_label(response)
     factor_names = list(levels)
     grid = np.linspace(-1, 1, 50)
     factor_pairs = list(factor_pairs)
@@ -1070,7 +1404,7 @@ def plot_copper_contours(model, levels, factor_pairs, fixed_level=0):
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
-        figsize=(5.4 * n_cols, 4.9 * n_rows),
+        figsize=figsize or (6.4 * n_cols, 6.4 * n_rows),
         squeeze=False,
     )
     axes_flat = axes.ravel()
@@ -1089,30 +1423,92 @@ def plot_copper_contours(model, levels, factor_pairs, fixed_level=0):
 
         contour = ax.contourf(x_real, y_real, zz, levels=18, cmap="viridis")
         ax.contour(x_real, y_real, zz, levels=8, colors="white", linewidths=0.5)
-        fig.colorbar(
+        colorbar = fig.colorbar(
             contour,
             ax=ax,
-            label=f"Predicted {model['response']}",
             fraction=0.046,
             pad=0.04,
         )
-        ax.set_xlabel(factor_x)
-        ax.set_ylabel(factor_y)
-        ax.set_title(
-            f"{factor_x} vs {factor_y}",
-            pad=14,
+        colorbar.set_label(
+            f"Predicted {response_text}",
+            fontsize=font_size - 1,
+            labelpad=7,
         )
+        colorbar.ax.tick_params(labelsize=font_size - 3)
+
+        factor_x_label = INTERACTION_FACTOR_LABELS.get(factor_x, factor_x)
+        factor_y_label = INTERACTION_FACTOR_LABELS.get(factor_y, factor_y)
+
+        measured_points = model["fitted_df"][[factor_x, factor_y]].dropna()
+        measured_x = np.interp(
+            measured_points[factor_x],
+            [-1, 0, 1],
+            [levels[factor_x][i] for i in [-1, 0, 1]],
+        )
+        measured_y = np.interp(
+            measured_points[factor_y],
+            [-1, 0, 1],
+            [levels[factor_y][i] for i in [-1, 0, 1]],
+        )
+        projected_points = np.column_stack([measured_x, measured_y])
+        ax.scatter(
+            projected_points[:, 0],
+            projected_points[:, 1],
+            s=58,
+            facecolor="white",
+            edgecolor="#202020",
+            linewidth=1.2,
+            alpha=0.95,
+            zorder=6,
+            clip_on=False,
+        )
+
+        ax.set_xlabel(factor_x_label, fontsize=font_size)
+        ax.set_ylabel(factor_y_label, fontsize=font_size)
+        ax.set_title(
+            f"{factor_x_label} vs {factor_y_label}",
+            fontsize=font_size + 1,
+            pad=16,
+        )
+        ax.tick_params(axis="both", labelsize=font_size - 2)
+        ax.set_box_aspect(1)
 
     for ax in axes_flat[len(factor_pairs):]:
         ax.set_visible(False)
 
+    fig.suptitle(
+        f"Copper DSD - Response contours for {response_text}",
+        fontsize=font_size + 4,
+        y=0.995,
+    )
+    fig.legend(
+        handles=[
+            Line2D(
+                [0],
+                [0],
+                marker="o",
+                color="none",
+                markerfacecolor="white",
+                markeredgecolor="#202020",
+                markeredgewidth=1.2,
+                markersize=7,
+                label="Projected measured design point",
+            ),
+        ],
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0.012),
+        ncol=1,
+        frameon=True,
+        framealpha=0.9,
+        fontsize=font_size - 1,
+    )
     fig.subplots_adjust(
         left=0.055,
         right=0.985,
-        bottom=0.08,
+        bottom=0.105,
         top=0.91,
-        wspace=0.34,
-        hspace=0.38,
+        wspace=0.31,
+        hspace=0.24,
     )
     plt.show(block=False)
 

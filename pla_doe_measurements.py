@@ -87,6 +87,19 @@ FD_I_REPEAT_MASS_MEASUREMENTS_G = repeat_mass_measurements_from_runs(
 )
 
 FD_II_MASS_MEASUREMENTS_G = mass_measurements_from_runs(FD_II_RUNS)
+FD_II_HYDROSTATIC_MEASUREMENTS = {
+    "weight_in_air_g": response_measurements_from_runs(FD_II["runs"], "weight_in_air_g"),
+    "weight_in_water_g": response_measurements_from_runs(
+        FD_II["runs"],
+        "weight_in_water_g",
+    ),
+    "volume_cm3": response_measurements_from_runs(FD_II["runs"], "volume_cm3"),
+    "density_g_cm3": response_measurements_from_runs(FD_II["runs"], "density_g_cm3"),
+    "relative_density_percent": response_measurements_from_runs(
+        FD_II["runs"],
+        "relative_density_percent",
+    ),
+}
 
 FD_II_CONCENTRIC_RUN_LABELS = run_labels(FD_II_CONCENTRIC_RUNS)
 FD_II_CONCENTRIC_MASS_MEASUREMENTS_G = mass_measurements_from_runs(

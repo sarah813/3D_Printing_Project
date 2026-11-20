@@ -13,6 +13,7 @@
     "weight_in_air_g",
     "weight_in_water_g",
     "volume_cm3",
+    "density_g_cm3",
     "relative_density_percent"
   ],
   "visual_result_fields": [
@@ -1153,11 +1154,30 @@
             "weight_g": [
               84.536
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.31
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.52,
+              82.58
+            ],
+            "weight_in_water_g": [
+              63.23,
+              63.06
+            ],
+            "volume_cm3": [
+              63.34,
+              63.17
+            ],
+            "relative_density_percent": [
+              97.62,
+              97.95
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1191,11 +1211,30 @@
             "weight_g": [
               84.55
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.31
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.52,
+              82.59
+            ],
+            "weight_in_water_g": [
+              63.18,
+              63.04
+            ],
+            "volume_cm3": [
+              63.29,
+              63.15
+            ],
+            "relative_density_percent": [
+              97.69,
+              97.99
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1229,11 +1268,30 @@
             "weight_g": [
               84.349
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.3
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.27,
+              82.36
+            ],
+            "weight_in_water_g": [
+              63.19,
+              63.18
+            ],
+            "volume_cm3": [
+              63.3,
+              63.29
+            ],
+            "relative_density_percent": [
+              97.38,
+              97.5
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1267,11 +1325,30 @@
             "weight_g": [
               84.496
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.31,
+              1.31
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.54,
+              82.62
+            ],
+            "weight_in_water_g": [
+              62.9,
+              63.09
+            ],
+            "volume_cm3": [
+              63.01,
+              63.2
+            ],
+            "relative_density_percent": [
+              98.15,
+              97.95
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1305,11 +1382,30 @@
             "weight_g": [
               85.314
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.3
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              83.28,
+              83.31
+            ],
+            "weight_in_water_g": [
+              63.83,
+              64.01
+            ],
+            "volume_cm3": [
+              63.95,
+              64.13
+            ],
+            "relative_density_percent": [
+              97.59,
+              97.35
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1343,11 +1439,30 @@
             "weight_g": [
               84.483
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.3
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.36,
+              82.53
+            ],
+            "weight_in_water_g": [
+              63.27,
+              63.16
+            ],
+            "volume_cm3": [
+              63.38,
+              63.27
+            ],
+            "relative_density_percent": [
+              97.36,
+              97.74
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1381,11 +1496,30 @@
             "weight_g": [
               85.337
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.3
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              83.33,
+              83.37
+            ],
+            "weight_in_water_g": [
+              63.94,
+              63.96
+            ],
+            "volume_cm3": [
+              64.06,
+              64.08
+            ],
+            "relative_density_percent": [
+              97.48,
+              97.5
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1419,11 +1553,30 @@
             "weight_g": [
               84.32
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.3,
+              1.3
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              82.27,
+              82.32
+            ],
+            "weight_in_water_g": [
+              63.1,
+              63.12
+            ],
+            "volume_cm3": [
+              63.21,
+              63.23
+            ],
+            "relative_density_percent": [
+              97.52,
+              97.55
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1457,11 +1610,30 @@
             "weight_g": [
               88.351
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.33
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              86.3,
+              86.3
+            ],
+            "weight_in_water_g": [
+              65.2,
+              64.71
+            ],
+            "volume_cm3": [
+              65.32,
+              64.83
+            ],
+            "relative_density_percent": [
+              99.0,
+              99.75
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1495,11 +1667,30 @@
             "weight_g": [
               87.76
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.33,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              85.68,
+              85.68
+            ],
+            "weight_in_water_g": [
+              64.45,
+              64.75
+            ],
+            "volume_cm3": [
+              64.57,
+              64.87
+            ],
+            "relative_density_percent": [
+              99.43,
+              98.97
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1533,11 +1724,30 @@
             "weight_g": [
               89.017
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.31,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              86.3,
+              86.94
+            ],
+            "weight_in_water_g": [
+              65.53,
+              65.65
+            ],
+            "volume_cm3": [
+              65.65,
+              65.77
+            ],
+            "relative_density_percent": [
+              98.5,
+              99.05
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1571,11 +1781,30 @@
             "weight_g": [
               88.166
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.33
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              86.11,
+              86.15
+            ],
+            "weight_in_water_g": [
+              65.07,
+              64.7
+            ],
+            "volume_cm3": [
+              65.19,
+              64.82
+            ],
+            "relative_density_percent": [
+              98.78,
+              99.59
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1609,11 +1838,30 @@
             "weight_g": [
               87.925
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              85.8,
+              85.87
+            ],
+            "weight_in_water_g": [
+              64.95,
+              64.86
+            ],
+            "volume_cm3": [
+              65.07,
+              64.98
+            ],
+            "relative_density_percent": [
+              98.81,
+              99.03
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1647,11 +1895,30 @@
             "weight_g": [
               88.548
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              86.42,
+              86.49
+            ],
+            "weight_in_water_g": [
+              65.25,
+              65.33
+            ],
+            "volume_cm3": [
+              65.37,
+              65.45
+            ],
+            "relative_density_percent": [
+              99.06,
+              99.02
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1685,11 +1952,30 @@
             "weight_g": [
               87.809
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              85.79,
+              85.82
+            ],
+            "weight_in_water_g": [
+              64.7,
+              64.71
+            ],
+            "volume_cm3": [
+              64.82,
+              64.83
+            ],
+            "relative_density_percent": [
+              99.18,
+              99.2
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
@@ -1761,11 +2047,30 @@
             "weight_g": [
               89.077
             ],
-            "density_g_cm3": [],
+            "density_g_cm3": [
+              1.32,
+              1.32
+            ],
             "porosity_percent": [],
             "leakage_rate": [],
             "log_leakage_rate": [],
-            "repeats": []
+            "repeats": [],
+            "weight_in_air_g": [
+              86.96,
+              86.99
+            ],
+            "weight_in_water_g": [
+              65.58,
+              65.63
+            ],
+            "volume_cm3": [
+              65.7,
+              65.75
+            ],
+            "relative_density_percent": [
+              99.18,
+              99.14
+            ]
           },
           "responses": {
             "min_pressure_mbar": null,
