@@ -2,7 +2,7 @@ Specimen,PAD files found,Unique PAD datasets assigned,Duplicate of,Status
 M04,2,1,,available
 T3,1,1,,available
 D1.25,0,0,,missing
-DF1.25,1,1,,available
+VF3_DF,1,1,,available
 M08,0,0,,missing
-SF1.25,1,1,,available
+VF3_SF,1,1,,available
 T4,0,0,,missing
