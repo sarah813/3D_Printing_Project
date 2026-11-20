@@ -63,6 +63,8 @@ standard Windows Python installation.
 
 ## Project structure
 
+I did a notebook for each series: PLA series (FDI, FDII), Copper series (VF1. VF2, MF)
+
 ### PLA DoE notebooks
 
 | File | Purpose |
