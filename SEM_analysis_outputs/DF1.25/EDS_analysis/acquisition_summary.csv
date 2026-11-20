@@ -1,0 +1,3 @@
+Site ID,Site name,Beam energy (kV),Beam current (nA),Working distance (mm),Horizontal field width (um),Live time (s),Dead time (%),Energy per channel (eV),Spectrum channels,Input count rate (counts/s)
+g0c6ud8y0h,VF3DF-x1000-5kV,5.0,0.34562695009485533,13.305745396597242,207.2,876.3248850761322,8.128163673867748,10.0,2000,5141
+is4erlx69g,VF3DF-x1000-20kV,20.0,0.6048471626659968,13.148914694729255,207.2,1204.1347843723831,21.76647292761685,10.0,2000,11264

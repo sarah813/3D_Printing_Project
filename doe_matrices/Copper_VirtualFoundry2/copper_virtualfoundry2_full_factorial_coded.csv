@@ -1,0 +1,12 @@
+Run,Run_number,Standard_order,A_layer_height_coded,B_line_width_coded,C_flow_ratio_coded
+VF2_M01,1,9,0,0,0
+VF2_M02,2,6,1,-1,1
+VF2_M03,3,5,1,-1,-1
+VF2_M04,4,3,-1,1,-1
+VF2_M05,5,4,-1,1,1
+VF2_M06,6,10,0,0,0
+VF2_M07,7,1,-1,-1,-1
+VF2_M08,8,2,-1,-1,1
+VF2_M09,9,7,1,1,-1
+VF2_M10,10,8,1,1,1
+VF2_M11,11,11,0,0,0

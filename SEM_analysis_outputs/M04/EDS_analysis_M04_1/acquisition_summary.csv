@@ -1,0 +1,3 @@
+Site ID,Site name,Beam energy (kV),Beam current (nA),Working distance (mm),Horizontal field width (um),Live time (s),Dead time (%),Energy per channel (eV),Spectrum channels,Input count rate (counts/s)
+6hr9do1a5u,M04-mitte-x1000-5kV,5.0,0.34562695009485533,10.6389000925467,207.2,531.7563633418416,5.146362533158265,10.0,2000,5367
+pg3jky7ooa,M04-x1000-20kV,20.0,0.6048471626659968,10.517232664719758,207.2,2185.0906904714006,40.0281761035991,10.0,2000,11962

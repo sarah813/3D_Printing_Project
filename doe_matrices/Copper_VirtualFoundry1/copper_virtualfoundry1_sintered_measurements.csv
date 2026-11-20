@@ -1,0 +1,19 @@
+Run,sintered_mass_g,sintered_volume_measurement_1_cm3,sintered_volume_cm3,sintered_density_measurement_1_g_cm3,sintered_density_measurement_2_g_cm3,sintered_density_measurement_3_g_cm3,sintered_density_g_cm3,sintered_density_sd_g_cm3,sintered_relative_density_percent,sintered_relative_density_sd_percentage_points,condition,notes
+FilamentVF1_DS1,1.00,0.14,0.14,7.13,7.20,,7.165,0.0501,79.97,0.56,in CO2,Filament reference; two Archimedes measurements supplied; SD retains the spreadsheet calculation from unrounded values
+VFL_DS2,1.70,0.24,0.24,7.07,,,7.070,,78.91,,DS_3,Filament reference; one Archimedes measurement supplied
+VFL_DS4,1.54,0.18,0.18,8.54,,,8.540,,95.31,,DS_3,Filament reference; one Archimedes measurement supplied
+T1,42.73,6.83,6.84,6.24,6.38,6.47,6.363,0.1159,71.02,1.29,DS_4,Analysis uses all three supplied Archimedes measurements
+T2,42.50,6.82,6.83,6.22,6.30,6.35,6.290,0.0656,70.20,0.73,DS_4,Analysis uses all three supplied Archimedes measurements; vacuum
+T3,40.06,6.16,6.17,6.49,6.52,6.57,6.527,0.0404,72.84,0.45,DS_4,Analysis uses all three supplied Archimedes measurements
+T4,40.40,6.47,6.48,6.23,6.27,6.33,6.277,0.0503,70.05,0.56,DS_4,Analysis uses all three supplied Archimedes measurements
+T5,40.49,6.30,6.31,6.42,5.93,,6.175,0.3465,68.92,3.87,DS_4,Analysis uses both supplied Archimedes measurements; vacuum
+T6,39.97,6.26,6.27,6.37,6.48,6.52,6.457,0.0777,72.06,0.87,DS_4,Analysis uses all three supplied Archimedes measurements
+T7,39.06,5.80,5.81,6.72,6.60,6.31,6.543,0.2108,73.03,2.35,DS_5,Analysis uses all three supplied Archimedes measurements
+T8,38.97,5.55,5.56,7.01,6.96,6.71,6.893,0.1607,76.93,1.79,DS_5,Analysis uses all three supplied Archimedes measurements
+T9,41.81,6.12,6.13,6.82,6.76,6.62,6.733,0.1026,75.15,1.15,DS_5,Analysis uses all three supplied Archimedes measurements
+T10,40.74,6.11,6.12,6.66,6.68,6.56,6.633,0.0643,74.03,0.72,DS_5,Analysis uses all three supplied Archimedes measurements
+T11,40.31,5.81,5.82,6.93,6.80,6.29,6.673,0.3383,74.48,3.78,DS_5,Analysis uses all three supplied Archimedes measurements
+T12,41.63,6.29,6.30,6.61,6.74,6.11,6.487,0.3326,72.40,3.71,DS_5,Analysis uses all three supplied Archimedes measurements
+T13,40.71,6.30,6.31,6.45,6.40,5.68,6.177,0.4309,68.94,4.81,DS_5,Analysis uses all three supplied Archimedes measurements
+T13.1,40.83,6.19,6.20,6.58,6.42,5.67,6.223,0.4858,69.46,5.42,DS_5,Analysis uses all three supplied Archimedes measurements
+T13.2,41.21,6.30,6.31,6.53,6.38,5.85,6.253,0.3573,69.79,3.99,DS_5,Analysis uses all three supplied Archimedes measurements

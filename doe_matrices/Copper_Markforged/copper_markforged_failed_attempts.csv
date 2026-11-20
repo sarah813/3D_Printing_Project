@@ -1,0 +1,2 @@
+Run,layer_height_mm,flow_ratio,nozzle_temperature_C,status,notes
+MF3 (previous),0.15,1.0,245,Excluded,Impossible print: holes between lines

@@ -1,0 +1,14 @@
+Run,Run_number,Standard_order,A_layer_height_mm,B_line_width_mm,C_flow_ratio,A_layer_height_coded,B_line_width_coded,C_flow_ratio_coded,mass_1_g,mass_2_g,mass_mean_g,hydrostatic_mass_in_air_g,mass_in_water_g,volume_cm3,density_g_cm3,relative_density_percent,hydrostatic_mass_in_air_repeat_2_g,mass_in_water_repeat_2_g,volume_repeat_2_cm3,density_repeat_2_g_cm3,relative_density_repeat_2_percent,relative_density_sd_percentage_points,average_density_g_cm3,average_relative_density_percent,geometric_density_g_cm3,notes
+VF2_M01,1,9,0.3,0.8,1.2,0,0,0,51.71,,51.71,51.71,10.27,10.29,5.03,91.43,,,,,,,5.03,91.43,4.81,single hydrostatic measurement used as green density; hydrostatic specimen M01
+VF2_M02,2,6,0.4,0.7,1.25,1,-1,1,51.728,,51.728,49.79,10.17,10.19,4.89,88.90,49.79,10.15,10.17,4.90,89.08,0.12,4.89,88.99,4.70,single print weighing available; hydrostatic specimen M02
+VF2_M03,3,5,0.4,0.7,1.15,1,-1,-1,50.753,,50.753,48.83,9.94,9.96,4.90,89.20,48.84,9.91,9.93,4.92,89.49,0.20,4.91,89.35,4.64,single print weighing available; hydrostatic specimen M03
+VF2_M04,4,3,0.2,0.9,1.15,-1,1,-1,51.44,,51.44,49.49,9.87,9.89,5.01,91.05,49.51,9.88,9.90,5.00,91.00,0.04,5.00,91.02,4.82,single print weighing available; hydrostatic specimen M04
+VF2_M05,5,4,0.2,0.9,1.25,-1,1,1,53.348,,53.348,51.31,10.14,10.16,5.05,91.89,51.34,10.10,10.12,5.07,92.30,0.30,5.06,92.10,4.84,single print weighing available; hydrostatic specimen M05
+VF2_M06,6,10,0.3,0.8,1.2,0,0,0,52.129,,52.129,50.15,9.97,9.99,5.02,91.34,50.16,9.92,9.94,5.05,91.82,0.34,5.03,91.58,4.82,single print weighing available; hydrostatic specimen M06
+VF2_M07,7,1,0.2,0.7,1.15,-1,-1,-1,50.868,,50.868,48.95,9.79,9.81,4.99,90.79,48.95,9.78,9.80,5.00,90.89,0.07,4.99,90.84,,single print weighing available; hydrostatic specimen M07
+VF2_M08,8,2,0.2,0.7,1.25,-1,-1,1,53.035,,53.035,51.02,10.07,10.09,5.06,92.00,51.02,10.05,10.07,5.07,92.19,0.13,5.06,92.09,,single print weighing available; hydrostatic specimen M08
+VF2_M09,9,7,0.4,0.9,1.15,1,1,-1,50.614,,50.614,48.70,9.87,9.89,4.93,89.60,48.71,9.88,9.90,4.92,89.53,0.05,4.92,89.56,,single print weighing available; hydrostatic specimen M09
+VF2_M10,10,8,0.4,0.9,1.25,1,1,1,52.818,,52.818,50.81,10.15,10.17,5.00,90.90,50.82,10.13,10.15,5.01,91.10,0.14,5.00,91.00,,single print weighing available; hydrostatic specimen M10
+VF2_M11,11,11,0.3,0.8,1.2,0,0,0,51.921,,51.921,49.95,9.95,9.97,5.01,91.16,49.98,9.97,9.99,5.00,91.03,0.09,5.01,91.10,,single print weighing available; hydrostatic specimen M11
+VF2_M01V2,12,12,0.3,0.8,1.2,0,0,0,52.221,,52.221,50.26,10.01,10.03,5.01,91.18,50.27,9.98,10.00,5.03,91.47,0.21,5.02,91.32,,center repeat; hydrostatic specimen M12 (M01V2)
+VF2_M13,13,13,0.2,0.8,1.2,-1,0,0,51.868,,51.868,49.91,9.90,9.92,5.03,91.55,49.93,,,,,,5.03,91.55,,validation run; hydrostatic specimen M13

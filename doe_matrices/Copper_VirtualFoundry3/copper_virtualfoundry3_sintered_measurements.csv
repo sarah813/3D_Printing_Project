@@ -1,0 +1,4 @@
+Run,thermal_cycle,atmosphere,measurement,weight_in_air_g,weight_in_water_g,volume_cm3,sintered_density_g_cm3,sintered_relative_density_percent
+T17,DS5,N+CO2,1,39.26,5.47,5.48,7.16,79.96
+T17,DS5,N+CO2,2,39.29,5.52,5.53,7.10,79.30
+VF3_DS5,DS5,N+CO2,1,1.23,0.17,0.17,7.22,80.61

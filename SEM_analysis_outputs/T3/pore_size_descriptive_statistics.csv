@@ -1,0 +1,9 @@
+Statistic,Value,Unit
+Number of pores,16827.0,count
+Mean maximum Feret diameter,28.0861710346467,µm
+Median maximum Feret diameter,14.0,µm
+Standard deviation of maximum Feret diameter,78.07557479323438,µm
+Smallest maximum Feret diameter,3.0,µm
+Largest maximum Feret diameter,3311.0,µm
+25th percentile of maximum Feret diameter,7.0,µm
+75th percentile of maximum Feret diameter,27.0,µm

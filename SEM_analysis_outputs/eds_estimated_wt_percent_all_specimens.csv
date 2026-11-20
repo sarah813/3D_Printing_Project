@@ -1,0 +1,46 @@
+Specimen,Acquisition,Element,Estimated wt%,Method
+M04,M04-x1000-20kV,Cu,73.59994936554624,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,C,14.07621309303739,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,O,10.14182231643511,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Si,0.8946256692420237,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Fe,0.6098797179992561,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Al,0.5003866339391104,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,S,0.06046703558411922,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Ca,0.0542312862740698,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Ti,0.035753177984897806,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,P,0.026671703957774507,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,N,0.0,20 kV peak fit calibrated to T3 reference
+M04,M04-x1000-20kV,Cl,0.0,20 kV peak fit calibrated to T3 reference
+T3,T3x1000-20kV,Cu,81.36,User-supplied T3 reference
+T3,T3x1000-20kV,C,14.91,User-supplied T3 reference
+T3,T3x1000-20kV,N,1.32,User-supplied T3 reference
+T3,T3x1000-20kV,O,1.18,User-supplied T3 reference
+T3,T3x1000-20kV,Si,0.63,User-supplied T3 reference
+T3,T3x1000-20kV,Al,0.31,User-supplied T3 reference
+T3,T3x1000-20kV,Ti,0.08,User-supplied T3 reference
+T3,T3x1000-20kV,Cl,0.07,User-supplied T3 reference
+T3,T3x1000-20kV,S,0.06,User-supplied T3 reference
+T3,T3x1000-20kV,Ca,0.05,User-supplied T3 reference
+T3,T3x1000-20kV,P,0.02,User-supplied T3 reference
+DF1.25,VF3DF-x1000-20kV,Cu,83.49549008482786,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,C,15.358992381822093,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,Si,0.6627463535268466,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,Al,0.3302285612323939,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,S,0.07882512138188924,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,Ca,0.05186471962104961,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,P,0.021852777587847594,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,O,0.0,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,N,0.0,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,Ti,0.0,20 kV peak fit calibrated to T3 reference
+DF1.25,VF3DF-x1000-20kV,Cl,0.0,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Cu,78.4863923044943,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,C,16.857304121818423,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,O,3.1539322395164175,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Si,0.5999740181274718,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Ca,0.5066483446373108,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Al,0.3087793288887596,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,S,0.06714010865976146,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,P,0.01982953385754757,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,N,0.0,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Ti,0.0,20 kV peak fit calibrated to T3 reference
+SF1.25,VF3_SF-x1000_20kV,Cl,0.0,20 kV peak fit calibrated to T3 reference

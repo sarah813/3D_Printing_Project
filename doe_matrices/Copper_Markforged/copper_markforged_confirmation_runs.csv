@@ -1,0 +1,5 @@
+Run,layer_height_mm,flow_ratio,nozzle_temperature_C,mass_g,archimedes_mass_g,density_g_cm3,relative_density_percent,role,status,volume_cm3
+MF17,0.21,1.18,255,,61.61,5.94,95.15058,Candidate replicate 1,Archimedes density measured; precision mass pending,10.38
+MF18,0.2,1.2,245,64.592,62.15,5.94,95.24904,Same-batch center control,Mass and Archimedes density measured,10.46
+MF19,0.21,1.18,255,,61.69,5.94,95.27413,Candidate replicate 2,Archimedes density measured; precision mass pending,10.38
+MF20,0.21,1.18,255,64.153,61.73,5.95,95.33591,Candidate replicate 3,Mass and Archimedes density measured,10.38

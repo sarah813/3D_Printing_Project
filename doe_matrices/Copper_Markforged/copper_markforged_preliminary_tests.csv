@@ -1,0 +1,2 @@
+Run,nozzle_temperature_C,layer_height_mm,speed_mm_s,flow_ratio,infill_percent,fan_percent,mass_g,density_g_cm3,approx_volume_cm3,status
+First_Test,245,0.2,15,1.2,100,30,63.97,,10.3,Preliminary; excluded from DoE regression
